@@ -26,3 +26,8 @@ Thumbs.db
 *.log
 *.db
 auth.db
+
+# Internal documentation & specifications
+auth-secured-minecraft-architecture.md
+MODRINTH.md
+docs/
