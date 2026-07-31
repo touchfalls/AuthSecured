@@ -82,11 +82,11 @@ public class DatabaseSessionRepository implements SessionRepository {
     public CompletableFuture<Optional<Session>> findActiveByPlayerUuid(UUID playerUuid) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = isPostgres ?
-                    "SELECT s.id, s.account_id, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
+                    "SELECT s.id, s.account_id, a.uuid AS player_uuid, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
                             "FROM sessions s JOIN accounts a ON s.account_id = a.id " +
                             "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > NOW() " +
                             "ORDER BY s.created_at DESC LIMIT 1" :
-                    "SELECT s.id, s.account_id, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
+                    "SELECT s.id, s.account_id, a.uuid AS player_uuid, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
                             "FROM sessions s JOIN accounts a ON s.account_id = a.id " +
                             "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > ? " +
                             "ORDER BY s.created_at DESC LIMIT 1";
@@ -180,8 +180,12 @@ public class DatabaseSessionRepository implements SessionRepository {
         String revokedStr = !isPostgres ? rs.getString("revoked_at") : null;
         Instant revokedAt = isPostgres ? (revokedTs != null ? revokedTs.toInstant() : null) : (revokedStr != null ? Instant.parse(revokedStr) : null);
 
-        // Placeholder UUID for playerUuid mapping if joined; defaults to random UUID if not selected directly
-        UUID playerUuid = UUID.randomUUID();
+        UUID playerUuid;
+        try {
+            playerUuid = isPostgres ? rs.getObject("player_uuid", UUID.class) : UUID.fromString(rs.getString("player_uuid"));
+        } catch (SQLException e) {
+            playerUuid = UUID.randomUUID();
+        }
         return new Session(id, accountId, playerUuid, tokenHash, serverId, createdAt, expiresAt, revokedAt);
     }
 }
