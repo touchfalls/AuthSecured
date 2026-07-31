@@ -1,0 +1,14 @@
+package com.example.authsecured.domain.auth;
+
+public enum AuthResult {
+    SUCCESS,
+    ACCOUNT_NOT_FOUND,
+    INVALID_PASSWORD,
+    RATE_LIMITED,
+    ACCOUNT_LOCKED,
+    ALREADY_AUTHENTICATED,
+    NOT_REGISTERED,
+    ALREADY_REGISTERED,
+    VALIDATION_FAILED,
+    INTERNAL_ERROR
+}

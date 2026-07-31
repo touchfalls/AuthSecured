@@ -1,0 +1,106 @@
+package com.example.authsecured.paper.command;
+
+import com.example.authsecured.application.AuthService;
+import com.example.authsecured.infrastructure.config.ConfigManager;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.Plugin;
+
+import java.util.Arrays;
+
+public class AuthAdminCommand implements CommandExecutor {
+
+    private final AuthService authService;
+    private final ConfigManager configManager;
+    private final Plugin plugin;
+
+    public AuthAdminCommand(AuthService authService, ConfigManager configManager, Plugin plugin) {
+        this.authService = authService;
+        this.configManager = configManager;
+        this.plugin = plugin;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("authsecured.admin")) {
+            sender.sendMessage(configManager.getMessage("messages.no-permission", "&cYou do not have permission to use admin commands."));
+            return true;
+        }
+
+        if (args.length < 1) {
+            sendUsage(sender);
+            return true;
+        }
+
+        String subCommand = args[0].toLowerCase();
+        switch (subCommand) {
+            case "reload" -> {
+                configManager.loadConfigurations();
+                sender.sendMessage("§aConfigurations reloaded successfully.");
+            }
+            case "unregister" -> {
+                if (args.length < 2) {
+                    sender.sendMessage("§cUsage: /authadmin unregister <player>");
+                    return true;
+                }
+                String target = args[1];
+                authService.unregister(target).thenAccept(success -> {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (success) {
+                            sender.sendMessage("§aUnregistered player: " + target);
+                        } else {
+                            sender.sendMessage("§cCould not unregister player or account not found.");
+                        }
+                    });
+                });
+            }
+            case "unlock" -> {
+                if (args.length < 2) {
+                    sender.sendMessage("§cUsage: /authadmin unlock <player>");
+                    return true;
+                }
+                String target = args[1];
+                authService.unlockAccount(target).thenAccept(success -> {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (success) {
+                            sender.sendMessage("§aUnlocked account for player: " + target);
+                        } else {
+                            sender.sendMessage("§cCould not unlock account or account not found.");
+                        }
+                    });
+                });
+            }
+            case "resetpassword" -> {
+                if (args.length < 3) {
+                    sender.sendMessage("§cUsage: /authadmin resetpassword <player> <newPassword>");
+                    return true;
+                }
+                String target = args[1];
+                char[] newPass = args[2].toCharArray();
+                authService.resetPassword(target, newPass).thenAccept(success -> {
+                    Arrays.fill(newPass, ' ');
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (success) {
+                            sender.sendMessage("§aPassword reset successfully for player: " + target);
+                        } else {
+                            sender.sendMessage("§cFailed to reset password. Check player name and password policy.");
+                        }
+                    });
+                });
+            }
+            default -> sendUsage(sender);
+        }
+
+        return true;
+    }
+
+    private void sendUsage(CommandSender sender) {
+        sender.sendMessage("§e=== AuthSecured Admin Commands ===");
+        sender.sendMessage("§e/authadmin reload §7- Reload plugin configuration");
+        sender.sendMessage("§e/authadmin unregister <player> §7- Delete account");
+        sender.sendMessage("§e/authadmin unlock <player> §7- Unlock account lock");
+        sender.sendMessage("§e/authadmin resetpassword <player> <newPassword> §7- Reset player password");
+    }
+}

@@ -1,0 +1,72 @@
+database:
+  type: sqlite # sqlite or postgresql
+
+  postgresql:
+    host: localhost
+    port: 5432
+    database: authsecured
+    username: authsecured
+    password-env: "${ENV:AUTHSECURED_DB_PASSWORD}"
+    ssl: false
+    pool-size: 10
+
+  sqlite:
+    file: auth.db
+
+security:
+  ip-hashing:
+    secret-env: "${ENV:AUTHSECURED_IP_SECRET}"
+
+  password:
+    min-length: 10
+    max-length: 128
+
+    argon2:
+      memory-kib: 65536
+      iterations: 3
+      parallelism: 2
+      hash-length: 32
+      salt-length: 16
+
+  login:
+    timeout-seconds: 60
+
+  rate-limit:
+    login:
+      per-account:
+        max-attempts: 5
+        window-seconds: 600
+        lock-seconds: 900
+
+      per-ip:
+        max-attempts: 20
+        window-seconds: 600
+        lock-seconds: 1800
+
+  registration:
+    max-accounts-per-ip: 3
+    max-attempts-per-hour: 10
+
+session:
+  persistent: false
+  timeout-minutes: 30
+
+redis:
+  enabled: false
+  uri-env: "${ENV:AUTHSECURED_REDIS_URI}"
+
+auth:
+  online-mode:
+    bypass-password: true
+
+restrictions:
+  freeze-player: true
+  block-chat: true
+  block-commands: true
+  block-inventory: true
+  block-interactions: true
+
+logging:
+  audit:
+    enabled: true
+  debug: false

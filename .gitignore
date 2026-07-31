@@ -1,0 +1,28 @@
+# Gradle build artifacts
+.gradle/
+.gradle_home/
+build/
+bin/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment & JDK
+.jdk21/
+.home/
+
+# Logs & Database runtime files
+*.log
+*.db
+auth.db
