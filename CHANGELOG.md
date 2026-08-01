@@ -5,19 +5,16 @@ All notable changes to this project will be documented in this file.
 ## [1.0.3] - 2026-08-01
 
 ### Added
-- Complete Gradle multi-module monorepo architecture (`:core`, `:database`, `:platform-paper`, `:platform-fabric`).
-- Native Fabric Dedicated Server support (`authsecured-fabric-1.0.3.jar`) alongside Paper/Purpur (`authsecured-paper-1.0.3.jar`).
-- Fabric Brigadier command registrations for `/register`, `/login`, `/changepassword`, `/logout`, and `/authstatus`.
-- Fabric API `ServerMessageEvents.ALLOW_CHAT_MESSAGE` event listener to block unauthenticated player chat.
+- Cleaned up `.vscode/settings.json` and enabled automatic Gradle project synchronization (`java.import.gradle.enabled`) for Antigravity IDE and VS Code Java extension.
 
-### Fixed
-- Fixed Fabric Loader startup crash (`ClassNotFoundException: ServerPlayNetworkHandlerMixin`) by migrating unauthenticated chat blocking to standard Fabric API events.
-- Fixed `DependencyContainer` initialization on Fabric Dedicated Server to instantiate SQLite/PostgreSQL database pools, Argon2id hashing, and rate limiting engines upon server start.
-- Fixed dual `"main"` and `"server"` entrypoint resolutions in `fabric.mod.json`.
+### Removed
+- Complete removal of Fabric module (`platform-fabric`), Fabric Loader dependencies, Fabric API listeners, Brigadier registrations, and Mixin configurations (architectural decision to maintain Fabric as a standalone repository).
+- Removed legacy root `.project` and `.classpath` files that caused non-project file warnings in IDEs.
 
 ### Changed
-- Refactored core business logic into pure Java `:core` module with 0 Minecraft API dependencies.
-- Updated release version to `1.0.3`.
+- Transitioned repository build system to a Paper/Purpur-focused architecture (`:core`, `:database`, `:platform-paper`).
+- Updated `build_and_test.sh` to compile core/database/paper modules and generate single `authsecured-paper-1.0.3.jar` artifact.
+- Cleaned up docstrings across core ports [AuthPlatform], [PlatformLogger], [PlayerRestrictionAdapter]
 
 ## [1.0.2] - 2026-08-01
 
