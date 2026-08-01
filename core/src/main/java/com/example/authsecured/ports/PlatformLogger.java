@@ -1,8 +1,8 @@
 package com.example.authsecured.ports;
 
 /**
- * Abstraction layer for platform-agnostic logging.
- * Implemented by PaperLogger and FabricLogger adapters.
+ * Abstraction for platform-specific logger engines.
+ * Implemented by PaperLogger adapter.
  */
 public interface PlatformLogger {
     void info(String message);

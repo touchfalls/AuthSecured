@@ -6,8 +6,8 @@ JAVA="/Library/Java/JavaVirtualMachines/jdk-26.jdk/Contents/Home/bin/java"
 JAR="/Library/Java/JavaVirtualMachines/jdk-26.jdk/Contents/Home/bin/jar"
 
 echo "=== Cleaning build directories ==="
-rm -rf build core/build database/build platform-paper/build platform-fabric/build
-mkdir -p build/libs build/classes build/test-classes build/tmp/paper build/tmp/fabric
+rm -rf build/classes build/test-classes build/tmp build/paper-classes build/libs 2>/dev/null || true
+mkdir -p build/libs build/classes build/test-classes build/tmp/paper
 
 echo "=== Compiling Core Module ==="
 find core/src/main/java -name "*.java" > build/core_sources.txt
@@ -31,22 +31,12 @@ if [ -d "platform-paper/src/main/resources" ]; then
     cp -r platform-paper/src/main/resources/* build/paper-classes/ 2>/dev/null || true
 fi
 
-echo "=== Compiling Platform-Fabric Module ==="
-find platform-fabric/src/main/java -name "*.java" > build/fabric_sources.txt
-mkdir -p build/fabric-classes
-$JAVAC -encoding UTF-8 --release 21 -cp "build/classes:lib/*" -d build/classes platform-fabric/src/main/java/com/example/authsecured/fabric/adapter/FabricPlayerRestrictionAdapter.java
-$JAVAC -encoding UTF-8 --release 21 -cp "build/classes:lib/*" -d build/fabric-classes @build/fabric_sources.txt 2>/dev/null || true
-if [ -d "platform-fabric/src/main/resources" ]; then
-    cp -r platform-fabric/src/main/resources/* build/fabric-classes/ 2>/dev/null || true
-    cp -r platform-fabric/src/main/resources/* build/classes/ 2>/dev/null || true
-fi
-
 echo "=== Compiling Test Sources ==="
-find core/src/test/java platform-paper/src/test/java platform-fabric/src/test/java -name "*.java" 2>/dev/null > build/test_sources.txt
-$JAVAC -encoding UTF-8 --release 21 -cp "build/classes:build/paper-classes:build/fabric-classes:lib/*" -d build/test-classes @build/test_sources.txt
+find core/src/test/java platform-paper/src/test/java -name "*.java" 2>/dev/null > build/test_sources.txt
+$JAVAC -encoding UTF-8 --release 21 -cp "build/classes:build/paper-classes:lib/*" -d build/test-classes @build/test_sources.txt
 
 echo "=== Running JUnit 5 Unit Tests ==="
-$JAVA -Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading -javaagent:lib/byte-buddy-agent-1.14.12.jar --add-opens java.base/java.lang=ALL-UNNAMED -cp "build/classes:build/paper-classes:build/fabric-classes:build/test-classes:lib/*" \
+$JAVA -Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading -javaagent:lib/byte-buddy-agent-1.14.12.jar --add-opens java.base/java.lang=ALL-UNNAMED -cp "build/classes:build/paper-classes:build/test-classes:lib/*" \
     org.junit.platform.console.ConsoleLauncher \
     --scan-classpath \
     --details=tree
@@ -72,25 +62,6 @@ rm -rf build/tmp/paper/META-INF/*.SF build/tmp/paper/META-INF/*.DSA build/tmp/pa
 PAPER_JAR="authsecured-paper-1.0.3.jar"
 (cd build/tmp/paper && $JAR cf "../../libs/$PAPER_JAR" .)
 
-echo "=== Building Shaded Fabric Mod Jar ==="
-cp -r build/classes/* build/tmp/fabric/
-cp -r build/fabric-classes/* build/tmp/fabric/
-
-for lib in lib/*.jar; do
-    basename_lib=$(basename "$lib")
-    case "$basename_lib" in
-        paper-api*|junit*|mockito*|byte-buddy*|objenesis*)
-            echo "Skipping $basename_lib from Fabric shadow jar..."
-            ;;
-        *)
-            (cd build/tmp/fabric && $JAR xf "$ROOT_DIR/$lib")
-            ;;
-    esac
-done
-
-rm -rf build/tmp/fabric/META-INF/*.SF build/tmp/fabric/META-INF/*.DSA build/tmp/fabric/META-INF/*.RSA 2>/dev/null || true
-FABRIC_JAR="authsecured-fabric-1.0.3.jar"
-(cd build/tmp/fabric && $JAR cf "../../libs/$FABRIC_JAR" .)
-
 echo "=== Build and Test Completed Successfully ==="
 ls -lh build/libs/
+
