@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.net.InetSocketAddress;
 import java.util.UUID;
 
 public class PlayerConnectionListener implements Listener {
@@ -46,7 +47,11 @@ public class PlayerConnectionListener implements Listener {
             return;
         }
 
-        authService.getSessionService().isValidActiveSession(uuid).thenAccept(hasActiveSession -> {
+        InetSocketAddress socketAddress = player.getAddress();
+        String rawIp = (socketAddress != null && socketAddress.getAddress() != null) ? socketAddress.getAddress().getHostAddress() : "";
+        String hashedIp = ipHashService.hashIpToString(rawIp);
+
+        authService.getSessionService().isValidActiveSession(uuid, hashedIp).thenAccept(hasActiveSession -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!player.isOnline()) return;
                 if (hasActiveSession) {

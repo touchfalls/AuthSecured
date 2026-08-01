@@ -31,4 +31,13 @@ public class IpHashService {
             throw new IllegalStateException("Failed to compute HMAC-SHA256 for IP address", e);
         }
     }
+
+    public String hashIpToString(String ipAddress) {
+        byte[] hash = hashIp(ipAddress);
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hash) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
 }

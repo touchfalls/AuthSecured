@@ -1,17 +1,41 @@
-# AuthSecured — Production-Ready Minecraft Auth System (v1.0.1)
+# AuthSecured — Production-Ready Minecraft Auth System (v1.0.2)
 
-**AuthSecured** is a modern, enterprise-grade authentication plugin and server mod designed specifically for **Fabric**, **Paper**, and **Purpur** Minecraft servers (1.20.4+ / 1.21+ / Java 21+).
+An enterprise-grade, high-performance authentication plugin & mod for **Paper, Purpur, and Fabric** Minecraft servers (1.20+). Built with **Hexagonal Architecture**, **Argon2id** password hashing (OWASP benchmarked), **dual DB support** (SQLite/PostgreSQL + Flyway), and **Redis rate limiting**.
 
-## Key Features
+---
 
-- 🔒 **Argon2id Password Hashing**: Memory-hard password hashing with unique random salts and constant-time password comparisons.
-- 🌐 **Multi-Platform Support**: Works seamlessly on **Fabric Dedicated Server**, **Paper**, and **Purpur** servers.
-- ⚡ **Zero Main Thread Lockup**: Password hashing, database calls, and network requests are executed off the server main loop via dedicated thread pools.
-- 🛡️ **Hexagonal Architecture**: Clean separation between server platforms, application logic, and infrastructure adapters (PostgreSQL, SQLite, Redis).
-- 🗄️ **Dual Database & Migrations**: Full PostgreSQL & SQLite support managed via Flyway / DB initializers.
-- 🚫 **Pre-Auth Isolation**: Restricts movement, chat, commands, block break/place, interactions, inventory access, and damage prior to authentication.
-- ⚡ **Multi-Layer Rate Limiting**: Independent Account-based and IP-based rate limiting with progressive throttling and account locking.
-- 🕵️ **Privacy-Preserving Audit Log**: IP addresses are stored hashed via HMAC-SHA256 with a server secret.
+## 🌟 Key Features
+
+- **Fabric Dedicated Server & Paper/Purpur Support**: Runs natively on both Fabric and Spigot/Paper server platforms.
+- **OWASP-Compliant Hashing**: Uses `Argon2id` via BouncyCastle to resist GPU/ASIC cracking.
+- **Dual Database Core**: Automatic Flyway migrations for both local SQLite (`auth.db`) and PostgreSQL clusters.
+- **Rate-Limiting Protection**: Account-based and IP-based brute force protection backed by Redis (or in-memory fallback).
+- **Session Auto-Login**: Optional persistent player session bypass across reconnects.
+- **Multi-Language i18n**: Out-of-the-box support for English (`en`), Russian (`ru`), Spanish (`es`), Italian (`it`), and French (`fr`).
+- **Granular Restrictions**: Customizable action restrictions for unauthenticated players (movement, chat, block break/place, damage, inventory, item pickup/drop, hunger).
+- **IP Hashing & Privacy**: Optional HMAC-SHA256 IP masking for GDPR compliance.
+- **Admin Commands**: In-game password resets, account unlocks, unregistration, real-time session duration management, and reload tools.
+
+---
+
+## 🚀 Quick Start
+
+### Build Requirements
+- JDK 21+
+- Bash & Git
+
+### Building the Project
+
+```bash
+# Clone the repository
+git clone https://github.com/example/secureauth.git
+cd secureauth
+
+# Run complete build and test suite
+bash build_and_test.sh
+```
+
+The resulting JAR will be generated in `build/libs/AuthSecured-1.0.2.jar`.
 
 ## Commands & Permissions
 

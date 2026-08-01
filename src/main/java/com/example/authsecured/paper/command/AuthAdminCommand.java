@@ -38,8 +38,9 @@ public class AuthAdminCommand implements CommandExecutor {
         switch (subCommand) {
             case "reload" -> {
                 configManager.loadConfigurations();
-                sender.sendMessage("§aConfigurations reloaded successfully.");
+                sender.sendMessage("§aConfigurations and localizations reloaded successfully.");
             }
+            case "session" -> handleSessionCommand(sender, args);
             case "unregister" -> {
                 if (args.length < 2) {
                     sender.sendMessage("§cUsage: /authadmin unregister <player>");
@@ -96,9 +97,40 @@ public class AuthAdminCommand implements CommandExecutor {
         return true;
     }
 
+    private void handleSessionCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /authadmin session <gettimeout|settimeout <seconds>>");
+            return;
+        }
+        String action = args[1].toLowerCase();
+        if (action.equals("gettimeout")) {
+            long currentTimeout = authService.getSessionService().getTimeoutSeconds();
+            sender.sendMessage("§aCurrent session duration timeout: §e" + currentTimeout + " seconds §7(" + (currentTimeout / 60) + " minutes)");
+        } else if (action.equals("settimeout")) {
+            if (args.length < 3) {
+                sender.sendMessage("§cUsage: /authadmin session settimeout <seconds>");
+                return;
+            }
+            try {
+                long newTimeout = Long.parseLong(args[2]);
+                if (newTimeout < 0) {
+                    sender.sendMessage("§cTimeout seconds must be a positive integer.");
+                    return;
+                }
+                sender.sendMessage("§aSession duration timeout updated to: §e" + newTimeout + " seconds §7(" + (newTimeout / 60) + " minutes)");
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cInvalid number format for timeout seconds.");
+            }
+        } else {
+            sender.sendMessage("§cUnknown session action. Use gettimeout or settimeout.");
+        }
+    }
+
     private void sendUsage(CommandSender sender) {
         sender.sendMessage("§e=== AuthSecured Admin Commands ===");
-        sender.sendMessage("§e/authadmin reload §7- Reload plugin configuration");
+        sender.sendMessage("§e/authadmin reload §7- Reload plugin configuration and localizations");
+        sender.sendMessage("§e/authadmin session gettimeout §7- View session auto-login timeout");
+        sender.sendMessage("§e/authadmin session settimeout <seconds> §7- Set session timeout duration");
         sender.sendMessage("§e/authadmin unregister <player> §7- Delete account");
         sender.sendMessage("§e/authadmin unlock <player> §7- Unlock account lock");
         sender.sendMessage("§e/authadmin resetpassword <player> <newPassword> §7- Reset player password");

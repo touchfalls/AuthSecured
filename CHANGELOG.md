@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-08-01
+
+### Added
+- Fabric Dedicated Server mod initialization fix with native `DedicatedServerModInitializer` entrypoint and `fabric-loader` integration.
+- Multi-language localization system with 5 language bundles: English (`messages_en.yml`), Russian (`messages_ru.yml`), Spanish (`messages_es.yml`), Italian (`messages_it.yml`), and French (`messages_fr.yml`).
+- Chat message color customization (`&0`-`&f`, `&l`, `&o`, etc. -> `§`), customizable command usage labels, and automatic English fallback.
+- Fully customizable session configuration (`session.timeout-seconds`, `session.enabled`, `session.verify-ip`, `session.persistent`).
+- Admin session management subcommands (`/authadmin session gettimeout` and `/authadmin session settimeout <seconds>`).
+- Granular unauthenticated player action restrictions in `config.yml` (`freeze-player`, `allow-flight`, `block-chat`, `block-commands`, `allowed-commands`, `block-inventory`, `block-interactions`, `block-block-break`, `block-block-place`, `block-damage-taken`, `block-damage-dealt`, `block-item-drop`, `block-item-pickup`, `block-hunger`).
+
+### Fixed
+- Fixed Fabric server entrypoint class loading issue by implementing `net.fabricmc.api.DedicatedServerModInitializer`.
+- Made `DependencyContainer` platform-agnostic to operate seamlessly on both Fabric server and Paper/Spigot environments.
+
+### Changed
+- Updated release version to `1.0.2`.
+
 ## [1.0.1] - 2026-08-01
 
 ### Added

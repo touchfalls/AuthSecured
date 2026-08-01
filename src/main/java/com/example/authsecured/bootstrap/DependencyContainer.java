@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 
 public class DependencyContainer {
 
-    private final Plugin plugin;
+    private final File dataFolder;
     private final Logger logger;
     private JedisPool jedisPool;
     private ConfigManager configManager;
@@ -38,12 +38,16 @@ public class DependencyContainer {
     private PlayerRestrictionManager restrictionManager;
 
     public DependencyContainer(Plugin plugin) {
-        this.plugin = plugin;
-        this.logger = plugin.getLogger();
+        this(plugin.getDataFolder(), plugin.getLogger());
+    }
+
+    public DependencyContainer(File dataFolder, Logger logger) {
+        this.dataFolder = dataFolder;
+        this.logger = logger;
     }
 
     public void init() {
-        this.configManager = new ConfigManager(plugin.getDataFolder(), logger);
+        this.configManager = new ConfigManager(dataFolder, logger);
         this.configManager.loadConfigurations();
 
         String ipSecret = configManager.getString("security.ip-hashing.secret-env", "");
@@ -56,7 +60,7 @@ public class DependencyContainer {
         String username = configManager.getString("database.postgresql.username", "authsecured");
         String password = configManager.getString("database.postgresql.password-env", "");
         int poolSize = configManager.getInt("database.postgresql.pool-size", 10);
-        String sqliteFile = new File(plugin.getDataFolder(), configManager.getString("database.sqlite.file", "auth.db")).getAbsolutePath();
+        String sqliteFile = new File(dataFolder, configManager.getString("database.sqlite.file", "auth.db")).getAbsolutePath();
 
         this.databaseManager = new DatabaseManager(logger, dbType, host, port, database, username, password, sqliteFile, poolSize);
 
@@ -116,9 +120,14 @@ public class DependencyContainer {
         this.rateLimitService = new RateLimitService(rateLimitStore, maxAccAttempts, accWindowSec, accLockSec,
                 maxIpAttempts, ipWindowSec, ipLockSec, maxRegPerIp, maxRegPerHour);
 
-        boolean persistentSession = configManager.getBoolean("session.persistent", false);
-        long sessionTimeoutMin = configManager.getInt("session.timeout-minutes", 30);
-        this.sessionService = new SessionService(sessionRepository, persistentSession, sessionTimeoutMin);
+        boolean sessionEnabled = configManager.getBoolean("session.enabled", true);
+        boolean persistentSession = configManager.getBoolean("session.persistent", true);
+        long sessionTimeoutSec = configManager.getInt("session.timeout-seconds", 1800);
+        if (sessionTimeoutSec <= 0) {
+            sessionTimeoutSec = configManager.getInt("session.timeout-minutes", 30) * 60L;
+        }
+        boolean verifyIp = configManager.getBoolean("session.verify-ip", true);
+        this.sessionService = new SessionService(sessionRepository, sessionEnabled, persistentSession, sessionTimeoutSec, verifyIp);
 
         boolean auditEnabled = configManager.getBoolean("logging.audit.enabled", true);
         this.securityService = new SecurityService(auditRepository, auditEnabled);

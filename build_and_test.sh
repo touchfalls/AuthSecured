@@ -36,7 +36,7 @@ ROOT_DIR=$(pwd)
 for lib in lib/*.jar; do
     basename_lib=$(basename "$lib")
     case "$basename_lib" in
-        paper-api*|junit*|mockito*|byte-buddy*|objenesis*)
+        paper-api*|fabric-loader*|junit*|mockito*|byte-buddy*|objenesis*)
             echo "Skipping $basename_lib from shadow jar..."
             ;;
         *)
@@ -50,7 +50,7 @@ done
 rm -rf build/tmp/shaded/META-INF/*.SF build/tmp/shaded/META-INF/*.DSA build/tmp/shaded/META-INF/*.RSA 2>/dev/null || true
 
 # Package into final jar
-JAR_NAME="AuthSecured-1.0.1.jar"
+JAR_NAME="AuthSecured-1.0.2.jar"
 (cd build/tmp/shaded && $JAR cf "../../libs/$JAR_NAME" .)
 
 echo "=== Build and Test Completed Successfully ==="

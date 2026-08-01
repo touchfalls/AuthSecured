@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -14,12 +15,13 @@ public class ConfigManager {
 
     private final File dataFolder;
     private final Logger logger;
+    private final LocalizationManager localizationManager;
     private Map<String, Object> configMap;
-    private Map<String, Object> messagesMap;
 
     public ConfigManager(File dataFolder, Logger logger) {
         this.dataFolder = dataFolder;
         this.logger = logger;
+        this.localizationManager = new LocalizationManager(dataFolder, logger);
     }
 
     @SuppressWarnings("unchecked")
@@ -29,10 +31,7 @@ public class ConfigManager {
         }
 
         File configFile = new File(dataFolder, "config.yml");
-        File messagesFile = new File(dataFolder, "messages.yml");
-
         saveDefaultIfNotExists(configFile, "config.yml");
-        saveDefaultIfNotExists(messagesFile, "messages.yml");
 
         Yaml yaml = new Yaml();
         try (InputStream is = new FileInputStream(configFile)) {
@@ -42,12 +41,8 @@ public class ConfigManager {
             configMap = Collections.emptyMap();
         }
 
-        try (InputStream is = new FileInputStream(messagesFile)) {
-            messagesMap = yaml.load(is);
-        } catch (Exception e) {
-            logger.severe("Failed to load messages.yml: " + e.getMessage());
-            messagesMap = Collections.emptyMap();
-        }
+        String language = getString("language", "en");
+        localizationManager.init(language);
     }
 
     private void saveDefaultIfNotExists(File targetFile, String resourceName) {
@@ -64,7 +59,6 @@ public class ConfigManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public String getString(String path, String defaultValue) {
         Object val = getNestedValue(configMap, path);
         if (val instanceof String str) {
@@ -89,12 +83,25 @@ public class ConfigManager {
         return defaultValue;
     }
 
-    public String getMessage(String path, String defaultValue) {
-        Object val = getNestedValue(messagesMap, path);
-        if (val instanceof String str) {
-            return str.replace("&", "§");
+    @SuppressWarnings("unchecked")
+    public List<String> getStringList(String path, List<String> defaultValue) {
+        Object val = getNestedValue(configMap, path);
+        if (val instanceof List<?> list) {
+            return list.stream().map(Object::toString).toList();
         }
-        return defaultValue.replace("&", "§");
+        return defaultValue;
+    }
+
+    public String getMessage(String path, String defaultValue) {
+        return localizationManager.getMessage(path, defaultValue);
+    }
+
+    public String getMessage(String path, String defaultValue, Map<String, String> placeholders) {
+        return localizationManager.getMessage(path, defaultValue, placeholders);
+    }
+
+    public LocalizationManager getLocalizationManager() {
+        return localizationManager;
     }
 
     private Object getNestedValue(Map<String, Object> map, String path) {

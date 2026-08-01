@@ -10,22 +10,34 @@ import java.util.concurrent.CompletableFuture;
 public class SessionService {
 
     private final SessionRepository sessionRepository;
+    private final boolean enabled;
     private final boolean persistent;
-    private final long timeoutMinutes;
+    private final long timeoutSeconds;
+    private final boolean verifyIp;
 
     public SessionService(SessionRepository sessionRepository, boolean persistent, long timeoutMinutes) {
+        this(sessionRepository, true, persistent, timeoutMinutes * 60L, false);
+    }
+
+    public SessionService(SessionRepository sessionRepository, boolean enabled, boolean persistent, long timeoutSeconds, boolean verifyIp) {
         this.sessionRepository = sessionRepository;
+        this.enabled = enabled;
         this.persistent = persistent;
-        this.timeoutMinutes = timeoutMinutes;
+        this.timeoutSeconds = timeoutSeconds;
+        this.verifyIp = verifyIp;
     }
 
     public CompletableFuture<Session> createSession(Long accountId, UUID playerUuid, String serverId) {
-        Session session = Session.create(accountId, playerUuid, serverId, timeoutMinutes * 60L);
+        Session session = Session.create(accountId, playerUuid, serverId, timeoutSeconds);
         return sessionRepository.save(session).thenApply(v -> session);
     }
 
     public CompletableFuture<Boolean> isValidActiveSession(UUID playerUuid) {
-        if (!persistent) {
+        return isValidActiveSession(playerUuid, null);
+    }
+
+    public CompletableFuture<Boolean> isValidActiveSession(UUID playerUuid, String playerIp) {
+        if (!enabled) {
             return CompletableFuture.completedFuture(false);
         }
         return sessionRepository.findActiveByPlayerUuid(playerUuid)
@@ -54,4 +66,9 @@ public class SessionService {
     public CompletableFuture<Void> cleanupExpiredSessions() {
         return sessionRepository.deleteExpired();
     }
+
+    public boolean isEnabled() { return enabled; }
+    public boolean isPersistent() { return persistent; }
+    public long getTimeoutSeconds() { return timeoutSeconds; }
+    public boolean isVerifyIp() { return verifyIp; }
 }

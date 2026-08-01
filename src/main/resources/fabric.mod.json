@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "authsecured",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "name": "AuthSecured",
   "description": "Production-ready Minecraft authentication system with Argon2id and Hexagonal Architecture for Fabric, Paper, and Purpur servers.",
   "authors": [
