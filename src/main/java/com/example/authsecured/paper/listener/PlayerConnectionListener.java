@@ -67,9 +67,15 @@ public class PlayerConnectionListener implements Listener {
                                 player.sendMessage(configManager.getMessage("messages.register-prompt", "&ePlease register using /register <password> <password>"));
                             }
                         });
+                    }).exceptionally(ex -> {
+                        plugin.getLogger().severe("Error checking registration status for " + player.getName() + ": " + ex.getMessage());
+                        return null;
                     });
                 }
             });
+        }).exceptionally(ex -> {
+            plugin.getLogger().severe("Error validating session for " + player.getName() + ": " + ex.getMessage());
+            return null;
         });
     }
 

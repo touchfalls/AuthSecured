@@ -75,6 +75,15 @@ public class LoginCommand implements CommandExecutor {
                             player.sendMessage(configManager.getMessage("messages.error", "&cAn internal error occurred."));
                 }
             });
+        }).exceptionally(ex -> {
+            Arrays.fill(password, ' ');
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) {
+                    player.sendMessage(configManager.getMessage("messages.error", "&cAn internal error occurred."));
+                }
+            });
+            plugin.getLogger().severe("Error processing login for " + player.getName() + ": " + ex.getMessage());
+            return null;
         });
 
         return true;

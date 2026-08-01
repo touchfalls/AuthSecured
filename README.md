@@ -1,12 +1,12 @@
 # AuthSecured — Production-Ready Minecraft Auth System (v1.0.2)
 
-An enterprise-grade, high-performance authentication plugin & mod for **Paper, Purpur, and Fabric** Minecraft servers (1.20+). Built with **Hexagonal Architecture**, **Argon2id** password hashing (OWASP benchmarked), **dual DB support** (SQLite/PostgreSQL + Flyway), and **Redis rate limiting**.
+An enterprise-grade, high-performance authentication plugin for **Paper, Purpur, Spigot, and Leaf** Minecraft servers (1.20+ / Java 21+). Built with **Hexagonal Architecture**, **Argon2id** password hashing (OWASP benchmarked), **dual DB support** (SQLite/PostgreSQL + Flyway), and **Redis rate limiting**.
 
 ---
 
 ## 🌟 Key Features
 
-- **Fabric Dedicated Server & Paper/Purpur Support**: Runs natively on both Fabric and Spigot/Paper server platforms.
+- **Paper, Purpur, Spigot & Leaf Support**: Runs natively as a high-performance Spigot/Paper server plugin.
 - **OWASP-Compliant Hashing**: Uses `Argon2id` via BouncyCastle to resist GPU/ASIC cracking.
 - **Dual Database Core**: Automatic Flyway migrations for both local SQLite (`auth.db`) and PostgreSQL clusters.
 - **Rate-Limiting Protection**: Account-based and IP-based brute force protection backed by Redis (or in-memory fallback).
@@ -46,7 +46,7 @@ The resulting JAR will be generated in `build/libs/AuthSecured-1.0.2.jar`.
 | `/changepassword` | `/changepassword <old> <new>` | Change account password | Default |
 | `/logout` | `/logout` | Terminate session | Default |
 | `/authstatus` | `/authstatus` | Check authentication status | Default |
-| `/authadmin` | `/authadmin <reload\|unregister\|unlock\|resetpassword>` | Administrative commands | `authsecured.admin` |
+| `/authadmin` | `/authadmin <reload\|unregister\|unlock\|resetpassword\|session>` | Administrative commands | `authsecured.admin` |
 
 ## Building from Source
 
@@ -55,7 +55,7 @@ The resulting JAR will be generated in `build/libs/AuthSecured-1.0.2.jar`.
 ./gradlew shadowJar
 ```
 
-The resulting JAR will be generated in `build/libs/AuthSecured-1.0.1.jar`.
+The resulting JAR will be generated in `build/libs/AuthSecured-1.0.2.jar`.
 
 ## License
 [MIT License](LICENSE)

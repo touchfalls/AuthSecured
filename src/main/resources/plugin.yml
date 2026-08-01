@@ -3,7 +3,7 @@ version: 1.0.2
 main: com.example.authsecured.AuthSecuredPlugin
 api-version: '1.20'
 author: Antigravity
-description: Production-ready Fabric, Paper, and Purpur authentication plugin with Argon2id and Hexagonal Architecture.
+description: Production-ready Paper, Purpur, Spigot, and Leaf authentication plugin with Argon2id and Hexagonal Architecture.
 
 commands:
   login:

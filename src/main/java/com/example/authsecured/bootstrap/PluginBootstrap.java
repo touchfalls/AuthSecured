@@ -71,6 +71,8 @@ public class PluginBootstrap {
         PluginCommand cmd = plugin.getCommand(name);
         if (cmd != null) {
             cmd.setExecutor(executor);
+        } else {
+            plugin.getLogger().warning("Could not register command '/" + name + "': Command missing from plugin.yml");
         }
     }
 }

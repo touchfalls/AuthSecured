@@ -55,6 +55,9 @@ public class AuthAdminCommand implements CommandExecutor {
                             sender.sendMessage("§cCould not unregister player or account not found.");
                         }
                     });
+                }).exceptionally(ex -> {
+                    sender.sendMessage(String.format("§cError unregistering player: %s", ex.getMessage()));
+                    return null;
                 });
             }
             case "unlock" -> {
@@ -71,6 +74,9 @@ public class AuthAdminCommand implements CommandExecutor {
                             sender.sendMessage("§cCould not unlock account or account not found.");
                         }
                     });
+                }).exceptionally(ex -> {
+                    sender.sendMessage(String.format("§cError unlocking account: %s", ex.getMessage()));
+                    return null;
                 });
             }
             case "resetpassword" -> {
@@ -89,6 +95,10 @@ public class AuthAdminCommand implements CommandExecutor {
                             sender.sendMessage("§cFailed to reset password. Check player name and password policy.");
                         }
                     });
+                }).exceptionally(ex -> {
+                    Arrays.fill(newPass, ' ');
+                    sender.sendMessage(String.format("§cError resetting password: %s", ex.getMessage()));
+                    return null;
                 });
             }
             default -> sendUsage(sender);

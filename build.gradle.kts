@@ -10,7 +10,6 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://oss.sonatype.org/content/groups/public/")
-    maven("https://maven.fabricmc.net/")
 }
 
 val javaVersion = (property("javaVersion") as String).toInt()
@@ -24,7 +23,6 @@ java {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:${property("paperApiVersion")}")
     testImplementation("io.papermc.paper:paper-api:${property("paperApiVersion")}")
-    compileOnly("net.fabricmc:fabric-loader:0.15.11")
     compileOnly(fileTree("lib") { include("*.jar") })
     testImplementation(fileTree("lib") { include("*.jar") })
 

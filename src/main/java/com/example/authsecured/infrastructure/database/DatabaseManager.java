@@ -59,7 +59,7 @@ public final class DatabaseManager {
     public void runMigrations() {
         try {
             if ("postgresql".equals(dbType) || "postgres".equals(dbType)) {
-                Flyway flyway = Flyway.configure(getClass().getClassLoader())
+                Flyway flyway = Flyway.configure(DatabaseManager.class.getClassLoader())
                         .dataSource(dataSource)
                         .locations("classpath:db/migration")
                         .load();

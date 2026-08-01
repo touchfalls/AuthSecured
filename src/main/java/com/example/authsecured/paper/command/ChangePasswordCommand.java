@@ -73,6 +73,16 @@ public class ChangePasswordCommand implements CommandExecutor {
                             player.sendMessage(configManager.getMessage("messages.error", "&cAn internal error occurred."));
                 }
             });
+        }).exceptionally(ex -> {
+            Arrays.fill(oldPassword, ' ');
+            Arrays.fill(newPassword, ' ');
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) {
+                    player.sendMessage(configManager.getMessage("messages.error", "&cAn internal error occurred."));
+                }
+            });
+            plugin.getLogger().severe("Error changing password for " + player.getName() + ": " + ex.getMessage());
+            return null;
         });
 
         return true;

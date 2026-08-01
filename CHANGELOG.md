@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [1.0.2] - 2026-08-01
 
 ### Added
-- Fabric Dedicated Server mod initialization fix with native `DedicatedServerModInitializer` entrypoint and `fabric-loader` integration.
+- Specialized Paper, Purpur, Spigot, and Leaf high-performance Minecraft server architecture.
 - Multi-language localization system with 5 language bundles: English (`messages_en.yml`), Russian (`messages_ru.yml`), Spanish (`messages_es.yml`), Italian (`messages_it.yml`), and French (`messages_fr.yml`).
 - Chat message color customization (`&0`-`&f`, `&l`, `&o`, etc. -> `§`), customizable command usage labels, and automatic English fallback.
 - Fully customizable session configuration (`session.timeout-seconds`, `session.enabled`, `session.verify-ip`, `session.persistent`).
@@ -13,8 +13,8 @@ All notable changes to this project will be documented in this file.
 - Granular unauthenticated player action restrictions in `config.yml` (`freeze-player`, `allow-flight`, `block-chat`, `block-commands`, `allowed-commands`, `block-inventory`, `block-interactions`, `block-block-break`, `block-block-place`, `block-damage-taken`, `block-damage-dealt`, `block-item-drop`, `block-item-pickup`, `block-hunger`).
 
 ### Fixed
-- Fixed Fabric server entrypoint class loading issue by implementing `net.fabricmc.api.DedicatedServerModInitializer`.
-- Made `DependencyContainer` platform-agnostic to operate seamlessly on both Fabric server and Paper/Spigot environments.
+- Robust exception handling across all asynchronous futures, event listeners, and administrative command handlers.
+- Safe password character array clearing in memory on both success and error execution paths.
 
 ### Changed
 - Updated release version to `1.0.2`.
@@ -22,7 +22,6 @@ All notable changes to this project will be documented in this file.
 ## [1.0.1] - 2026-08-01
 
 ### Added
-- Fabric Dedicated Server support (`fabric.mod.json` and `AuthSecuredFabricMod` entrypoint) for multi-platform deployment on Fabric, Paper, and Purpur servers.
 - Standard `.gitignore` configuring ignores for build directories (`.gradle/`, `build/`), IDE workspace settings (`.idea/`, `*.iml`), system files, and local SQLite runtime databases.
 
 ### Fixed

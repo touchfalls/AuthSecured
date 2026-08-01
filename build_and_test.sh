@@ -36,7 +36,7 @@ ROOT_DIR=$(pwd)
 for lib in lib/*.jar; do
     basename_lib=$(basename "$lib")
     case "$basename_lib" in
-        paper-api*|fabric-loader*|junit*|mockito*|byte-buddy*|objenesis*)
+        paper-api*|junit*|mockito*|byte-buddy*|objenesis*)
             echo "Skipping $basename_lib from shadow jar..."
             ;;
         *)
