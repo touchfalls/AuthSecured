@@ -28,8 +28,8 @@ An enterprise-grade, high-performance authentication plugin for **Paper, Purpur,
 
 ```bash
 # Clone the repository
-git clone https://github.com/example/secureauth.git
-cd secureauth
+git clone https://github.com/touchfalls/authsecured.git
+cd authsecured
 
 # Run complete build and test suite
 bash build_and_test.sh
