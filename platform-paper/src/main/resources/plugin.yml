@@ -1,0 +1,35 @@
+name: AuthSecured
+version: 1.0.2
+main: com.example.authsecured.AuthSecuredPlugin
+api-version: '1.20'
+author: Antigravity
+description: Production-ready Paper, Purpur, Spigot, and Leaf authentication plugin with Argon2id and Hexagonal Architecture.
+
+commands:
+  login:
+    description: Authenticate with password.
+    usage: /login <password>
+    aliases: [l]
+  register:
+    description: Register account with password.
+    usage: /register <password> <confirmPassword>
+    aliases: [reg]
+  changepassword:
+    description: Change account password.
+    usage: /changepassword <oldPassword> <newPassword>
+    aliases: [cp]
+  logout:
+    description: Logout from current session.
+    usage: /logout
+  authstatus:
+    description: Check authentication status.
+    usage: /authstatus
+  authadmin:
+    description: Admin authentication operations.
+    usage: /authadmin <reload|unregister|unlock|resetpassword>
+    permission: authsecured.admin
+
+permissions:
+  authsecured.admin:
+    description: Allows access to administrative auth commands.
+    default: op
