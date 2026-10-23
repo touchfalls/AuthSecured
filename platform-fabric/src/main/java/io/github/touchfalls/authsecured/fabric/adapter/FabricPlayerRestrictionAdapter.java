@@ -4,7 +4,9 @@ import io.github.touchfalls.authsecured.domain.auth.AuthState;
 import io.github.touchfalls.authsecured.ports.PlayerRestrictionAdapter;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class FabricPlayerRestrictionAdapter implements PlayerRestrictionAdapter {
@@ -40,5 +42,13 @@ public final class FabricPlayerRestrictionAdapter implements PlayerRestrictionAd
     @Override
     public AuthState getAuthState(UUID playerUuid) {
         return playerStates.getOrDefault(playerUuid, AuthState.AUTH_REQUIRED);
+    }
+
+    @Override
+    public Set<UUID> getAuthenticatedPlayers() {
+        return playerStates.entrySet().stream()
+                .filter(entry -> entry.getValue() == AuthState.AUTHENTICATED)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toUnmodifiableSet());
     }
 }

@@ -1,8 +1,8 @@
 # AuthSecured configuration
 #
-# Language, restrictions, session timeout, and authentication timeout changes
-# are applied by /authadmin reload. Database, Redis, password hashing, and
-# notification endpoint changes require a full server restart.
+# Language, restrictions, session timeout and extension, and authentication
+# timeout changes are applied by /authadmin reload. Database, Redis, password
+# hashing, and notification endpoint changes require a full server restart.
 # Durations are in seconds and memory values are in KiB unless stated otherwise.
 
 # Message language. Available values: en, ru, es, it, fr.
@@ -84,6 +84,11 @@ session:
   timeout-seconds: 1800
   # Reject a saved session when the player's anonymized IP has changed.
   verify-ip: true
+  # Keep an authenticated player's session alive while they stay online, so the
+  # lifetime above counts from when they leave instead of from login. On a proxy
+  # network whose servers share one database, players can then switch servers
+  # without logging in again, however long they have been playing.
+  extend-while-online: false
 
 redis:
   # Optional shared rate-limit storage. Keep false for the in-memory store.

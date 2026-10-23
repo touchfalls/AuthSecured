@@ -4,8 +4,11 @@ import io.github.touchfalls.authsecured.application.SessionService;
 import io.github.touchfalls.authsecured.domain.session.Session;
 import io.github.touchfalls.authsecured.ports.SessionRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -127,5 +130,55 @@ class SessionServiceTest {
         assertEquals(120, java.time.Duration.between(session.getCreatedAt(), session.getExpiresAt()).getSeconds());
         assertThrows(IllegalArgumentException.class, () -> service.setTimeoutSeconds(0));
         assertEquals(120, service.getTimeoutSeconds());
+    }
+
+    @Test
+    void extendingPersistentSessionsMovesExpiryToNowPlusTimeout() {
+        SessionRepository repository = Mockito.mock(SessionRepository.class);
+        Mockito.when(repository.extendActive(Mockito.any(), Mockito.any()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        SessionService service = new SessionService(repository, true, true, 600, true);
+        service.setExtendWhileOnline(true);
+        UUID playerUuid = UUID.randomUUID();
+
+        Instant before = Instant.now();
+        service.extendActiveSessions(List.of(playerUuid)).join();
+
+        ArgumentCaptor<Instant> expiry = ArgumentCaptor.forClass(Instant.class);
+        Mockito.verify(repository).extendActive(Mockito.eq(List.of(playerUuid)), expiry.capture());
+        assertFalse(expiry.getValue().isBefore(before.plusSeconds(600)));
+        assertTrue(expiry.getValue().isBefore(Instant.now().plusSeconds(601)));
+    }
+
+    @Test
+    void sessionsAreNotExtendedUnlessEnabled() {
+        SessionRepository repository = Mockito.mock(SessionRepository.class);
+        SessionService service = new SessionService(repository, true, true, 600, true);
+
+        service.extendActiveSessions(List.of(UUID.randomUUID())).join();
+        service.setExtendWhileOnline(true);
+        service.extendActiveSessions(List.of()).join();
+
+        Mockito.verify(repository, Mockito.never()).extendActive(Mockito.any(), Mockito.any());
+    }
+
+    @Test
+    void extendingInMemorySessionsKeepsThemValidPastTheirOriginalExpiry() throws InterruptedException {
+        SessionRepository repository = Mockito.mock(SessionRepository.class);
+        Mockito.when(repository.deleteAll()).thenReturn(CompletableFuture.completedFuture(null));
+        SessionService service = new SessionService(repository, true, false, 1, false);
+        service.setExtendWhileOnline(true);
+        UUID playerUuid = UUID.randomUUID();
+        Session original = service.createSession(1L, playerUuid, null, "server1").join();
+
+        service.setTimeoutSeconds(3_600);
+        service.extendActiveSessions(List.of(playerUuid)).join();
+        Thread.sleep(1_100);
+        assertTrue(service.isValidActiveSession(playerUuid).join());
+
+        // The extended copy keeps the session ID, so revoking it still ends the session.
+        service.revokeSession(original.getId()).join();
+        assertFalse(service.isValidActiveSession(playerUuid).join());
+        Mockito.verify(repository, Mockito.never()).extendActive(Mockito.any(), Mockito.any());
     }
 }

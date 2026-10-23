@@ -49,4 +49,18 @@ class AuthStateTest {
         manager.removePlayer(uuid);
         assertEquals(java.util.List.of("lock", "unlock", "unlock"), calls);
     }
+
+    @Test
+    void authenticatedPlayerSnapshotFollowsState() {
+        PlayerRestrictionManager manager = new PlayerRestrictionManager();
+        UUID authenticated = UUID.randomUUID();
+        UUID pending = UUID.randomUUID();
+
+        manager.setPlayerUnauthenticated(pending, null);
+        manager.setPlayerAuthenticated(authenticated);
+        assertEquals(java.util.Set.of(authenticated), manager.getAuthenticatedPlayers());
+
+        manager.removePlayer(authenticated);
+        assertTrue(manager.getAuthenticatedPlayers().isEmpty());
+    }
 }

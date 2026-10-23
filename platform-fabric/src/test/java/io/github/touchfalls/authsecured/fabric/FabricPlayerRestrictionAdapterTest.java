@@ -4,6 +4,7 @@ import io.github.touchfalls.authsecured.domain.auth.AuthState;
 import io.github.touchfalls.authsecured.fabric.adapter.FabricPlayerRestrictionAdapter;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,5 +25,18 @@ class FabricPlayerRestrictionAdapterTest {
         assertTrue(adapter.isAuthenticated(uuid));
         adapter.removePlayer(uuid);
         assertFalse(adapter.isAuthenticated(uuid));
+    }
+
+    @Test
+    void listsOnlyAuthenticatedPlayers() {
+        FabricPlayerRestrictionAdapter adapter = new FabricPlayerRestrictionAdapter();
+        UUID authenticated = UUID.randomUUID();
+        UUID pending = UUID.randomUUID();
+
+        adapter.setPlayerUnauthenticated(authenticated, null);
+        adapter.setPlayerUnauthenticated(pending, null);
+        adapter.setPlayerAuthenticated(authenticated);
+
+        assertEquals(Set.of(authenticated), adapter.getAuthenticatedPlayers());
     }
 }

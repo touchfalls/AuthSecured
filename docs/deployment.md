@@ -35,3 +35,11 @@ For proxied offline-mode backends, restrict direct backend access and configure
 the proxy's secure player forwarding. Otherwise UUIDs and client addresses are
 not trustworthy. Back up the database before upgrades and test the selected
 platform artifact on a staging server first.
+
+To let players log in once and then move between backend servers of a proxy
+network, give every backend the same PostgreSQL database and the same
+`AUTHSECURED_IP_SECRET`, keep `session.enabled` and `session.persistent` on, and
+set `session.extend-while-online: true`. A server switch is a new connection to
+another backend, which then accepts the shared session; with the extension
+enabled that session stays valid however long the player has been online, and
+`session.timeout-seconds` counts from when they leave the network.

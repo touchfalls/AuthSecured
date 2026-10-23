@@ -51,6 +51,11 @@ public class Session {
         return currentTime.isBefore(expiresAt);
     }
 
+    /** Copy of this session with a different expiry. */
+    public Session withExpiresAt(Instant newExpiresAt) {
+        return new Session(id, accountId, playerUuid, tokenHash, serverId, createdAt, newExpiresAt, revokedAt);
+    }
+
     public void revoke(Instant currentTime) {
         this.revokedAt = currentTime;
     }

@@ -5,6 +5,7 @@ import io.github.touchfalls.authsecured.paper.player.PlayerRestrictionManager;
 import io.github.touchfalls.authsecured.ports.PlayerRestrictionAdapter;
 import org.bukkit.Location;
 
+import java.util.Set;
 import java.util.UUID;
 
 public class PaperPlayerRestrictionAdapter implements PlayerRestrictionAdapter {
@@ -44,5 +45,10 @@ public class PaperPlayerRestrictionAdapter implements PlayerRestrictionAdapter {
     @Override
     public AuthState getAuthState(UUID playerUuid) {
         return restrictionManager.getAuthState(playerUuid);
+    }
+
+    @Override
+    public Set<UUID> getAuthenticatedPlayers() {
+        return restrictionManager.getAuthenticatedPlayers();
     }
 }

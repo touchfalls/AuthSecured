@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.UUID;
 
 public class PlayerConnectionListener implements Listener {
@@ -90,8 +91,16 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
+        boolean authenticated = restrictionManager.isAuthenticated(uuid);
         authenticationTimeoutService.clear(uuid);
         restrictionManager.removePlayer(uuid);
+        if (authenticated) {
+            // With session.extend-while-online the session lifetime now starts at disconnect.
+            authService.getSessionService().extendActiveSessions(List.of(uuid)).exceptionally(ex -> {
+                plugin.getLogger().severe("Session extension failed for " + event.getPlayer().getName() + ".");
+                return null;
+            });
+        }
     }
 
     private static boolean isCurrentPlayer(Player player, UUID uuid) {
