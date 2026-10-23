@@ -10,6 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import io.github.touchfalls.authsecured.util.SecretRedactor;
 import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
 import io.github.touchfalls.authsecured.paper.player.PlayerRestrictionManager;
+import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
@@ -28,12 +29,14 @@ public final class PaperSensitiveCommandListener implements Listener {
     private final JavaPlugin plugin;
     private final PlayerRestrictionManager restrictionManager;
     private final ConfigManager configManager;
+    private final PaperScheduler scheduler;
 
     public PaperSensitiveCommandListener(JavaPlugin plugin, PlayerRestrictionManager restrictionManager,
-                                         ConfigManager configManager) {
+                                         ConfigManager configManager, PaperScheduler scheduler) {
         this.plugin = plugin;
         this.restrictionManager = restrictionManager;
         this.configManager = configManager;
+        this.scheduler = scheduler;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -57,7 +60,7 @@ public final class PaperSensitiveCommandListener implements Listener {
             return;
         }
         PluginCommand selectedCommand = command;
-        plugin.getServer().getScheduler().runTask(plugin, () -> executor.onCommand(
+        scheduler.schedule(event.getPlayer(), () -> executor.onCommand(
                 event.getPlayer(), selectedCommand, parsed.label(), parsed.arguments()));
     }
 

@@ -5,6 +5,7 @@ import io.github.touchfalls.authsecured.application.AuthenticationTimeoutService
 import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
 import io.github.touchfalls.authsecured.infrastructure.security.IpHashService;
 import io.github.touchfalls.authsecured.paper.player.PlayerRestrictionManager;
+import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,16 +26,19 @@ public class PlayerConnectionListener implements Listener {
     private final IpHashService ipHashService;
     private final AuthenticationTimeoutService authenticationTimeoutService;
     private final Plugin plugin;
+    private final PaperScheduler scheduler;
 
     public PlayerConnectionListener(AuthService authService, PlayerRestrictionManager restrictionManager,
                                     ConfigManager configManager, IpHashService ipHashService,
-                                    AuthenticationTimeoutService authenticationTimeoutService, Plugin plugin) {
+                                    AuthenticationTimeoutService authenticationTimeoutService, Plugin plugin,
+                                    PaperScheduler scheduler) {
         this.authService = authService;
         this.restrictionManager = restrictionManager;
         this.configManager = configManager;
         this.ipHashService = ipHashService;
         this.authenticationTimeoutService = authenticationTimeoutService;
         this.plugin = plugin;
+        this.scheduler = scheduler;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -59,7 +63,7 @@ public class PlayerConnectionListener implements Listener {
         byte[] hashedIp = ipHashService.hashIp(rawIp);
 
         authService.getSessionService().isValidActiveSession(uuid, hashedIp).thenAccept(hasActiveSession -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            scheduler.schedule(player, () -> {
                 if (!isCurrentPlayer(player, uuid)) return;
                 if (hasActiveSession) {
                     restrictionManager.setPlayerAuthenticated(uuid);
@@ -67,7 +71,7 @@ public class PlayerConnectionListener implements Listener {
                     player.sendMessage(configManager.getMessage("messages.session-restored", "&aSession restored automatically!"));
                 } else {
                     authService.isRegistered(uuid).thenAccept(registered -> {
-                        Bukkit.getScheduler().runTask(plugin, () -> {
+                        scheduler.schedule(player, () -> {
                             if (!isCurrentPlayer(player, uuid)) return;
                             if (registered) {
                                 player.sendMessage(configManager.getMessage("messages.login-prompt", "&ePlease log in using /login <password>"));

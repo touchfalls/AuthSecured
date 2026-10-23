@@ -6,8 +6,8 @@ release, 26.3.
 
 ## Platforms
 
-- Paper, Purpur, Spigot, and Leaf: install `authsecured-paper-1.2.3.jar` in
-  `plugins/`.
+- Paper, Purpur, Folia, Spigot, and Leaf: install `authsecured-paper-1.2.3.jar`
+  in `plugins/`.
 - Fabric: install the JAR whose `+mc...` suffix exactly matches the Minecraft
   version in `mods/`, together with the matching Fabric API release.
 - Minecraft 1.21.x requires Java 21. Minecraft 26.x requires Java 25 or newer.

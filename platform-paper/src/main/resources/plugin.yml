@@ -2,8 +2,9 @@ name: AuthSecured
 version: '${version}'
 main: io.github.touchfalls.authsecured.AuthSecuredPlugin
 api-version: '1.21'
+folia-supported: true
 author: touchfalls
-description: Authentication plugin for Paper, Purpur, Spigot, and Leaf 1.21 through current releases.
+description: Authentication plugin for Paper, Purpur, Folia, Spigot, and Leaf 1.21 through current releases.
 
 commands:
   login:

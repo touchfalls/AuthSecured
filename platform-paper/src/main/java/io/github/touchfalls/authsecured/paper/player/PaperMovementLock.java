@@ -1,6 +1,7 @@
 package io.github.touchfalls.authsecured.paper.player;
 
 import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
+import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -22,10 +23,12 @@ public final class PaperMovementLock implements PlayerRestrictionManager.Movemen
     private record Speeds(float walk, float fly) {}
 
     private final ConfigManager configManager;
+    private final PaperScheduler scheduler;
     private final Map<UUID, Speeds> savedSpeeds = new ConcurrentHashMap<>();
 
-    public PaperMovementLock(ConfigManager configManager) {
+    public PaperMovementLock(ConfigManager configManager, PaperScheduler scheduler) {
         this.configManager = configManager;
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -54,7 +57,8 @@ public final class PaperMovementLock implements PlayerRestrictionManager.Movemen
     /** Restores every frozen online player, used when the plugin is disabled. */
     public void unlockAll() {
         for (UUID playerUuid : Map.copyOf(savedSpeeds).keySet()) {
-            unlock(playerUuid);
+            Player player = Bukkit.getPlayer(playerUuid);
+            if (player != null) scheduler.runOrSchedule(player, () -> unlock(playerUuid));
         }
     }
 

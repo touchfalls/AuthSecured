@@ -66,6 +66,11 @@ class UnifiedCommandServiceTest {
             task.run();
             return null;
         }).when(platform).runTaskOnMainThread(any());
+        doAnswer(invocation -> {
+            Runnable task = invocation.getArgument(1);
+            task.run();
+            return null;
+        }).when(platform).runTaskForPlayer(any(), any());
 
         localizationManager = new LocalizationManager(tempDir, "en", DUMMY_LOGGER);
         ipHashService = new IpHashService("test-secret");
@@ -209,5 +214,19 @@ class UnifiedCommandServiceTest {
         verify(authService, never()).getSessionService();
         verify(restrictionAdapter, never()).setPlayerUnauthenticated(any(), any());
         verify(platform).sendMessage(eq(playerUuid), anyString());
+    }
+
+    @Test
+    @DisplayName("Player state changes run on the thread that owns that player")
+    void playerStateChangesAreScheduledForThatPlayer() {
+        UUID playerUuid = UUID.randomUUID();
+        when(authService.login(eq(playerUuid), eq("TestPlayer"), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(AuthResult.SUCCESS));
+
+        commandExecutor.executeLogin(playerUuid, "TestPlayer", "Pass123456!".toCharArray(), "127.0.0.1").join();
+
+        // Folia has no main thread: the platform must be told whose state changes.
+        verify(platform).runTaskForPlayer(eq(playerUuid), any());
+        verify(platform, never()).runTaskOnMainThread(any());
     }
 }

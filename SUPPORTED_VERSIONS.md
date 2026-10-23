@@ -9,6 +9,10 @@ The single `authsecured-paper-1.2.3.jar` artifact is compiled against the
 lowest supported Paper API (`1.21`) and uses only API calls retained by newer
 Paper, Purpur, Spigot, and Leaf releases.
 
+The same artifact runs on Folia. There it changes a player's state on the
+thread of the region that owns the player and runs server-wide timers on the
+global region, because Folia has no single server thread.
+
 ## Fabric servers
 
 Fabric mods are remapped or compiled for an exact Minecraft release. Use the

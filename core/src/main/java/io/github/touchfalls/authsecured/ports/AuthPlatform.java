@@ -12,6 +12,14 @@ public interface AuthPlatform {
     PlayerRestrictionAdapter getRestrictionAdapter();
     void sendMessage(UUID playerUuid, String message);
     void runTaskOnMainThread(Runnable task);
+
+    /**
+     * Runs a task that reads or changes a player's state on the thread that owns that player.
+     * That is the server thread everywhere except Folia, where each region has its own thread.
+     */
+    default void runTaskForPlayer(UUID playerUuid, Runnable task) {
+        runTaskOnMainThread(task);
+    }
     boolean isOnlineMode();
     boolean isPlayerOnline(UUID playerUuid);
 

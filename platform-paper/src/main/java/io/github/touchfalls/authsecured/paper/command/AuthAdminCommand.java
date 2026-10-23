@@ -3,6 +3,7 @@ package io.github.touchfalls.authsecured.paper.command;
 import io.github.touchfalls.authsecured.bootstrap.AdminOperations;
 import io.github.touchfalls.authsecured.bootstrap.DependencyContainer;
 import io.github.touchfalls.authsecured.domain.auth.TemporaryPasswordReset;
+import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -31,11 +32,13 @@ public final class AuthAdminCommand implements TabExecutor {
     private final DependencyContainer container;
     private final AdminOperations operations;
     private final Plugin plugin;
+    private final PaperScheduler scheduler;
 
-    public AuthAdminCommand(DependencyContainer container, Plugin plugin) {
+    public AuthAdminCommand(DependencyContainer container, Plugin plugin, PaperScheduler scheduler) {
         this.container = container;
         this.operations = new AdminOperations(container);
         this.plugin = plugin;
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -148,7 +151,7 @@ public final class AuthAdminCommand implements TabExecutor {
             return;
         }
         operations.issueTemporaryPassword(args[1]).whenComplete((reset, error) ->
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                scheduler.schedule(sender, () -> {
                     if (error != null) {
                         sender.sendMessage(message("messages.admin-reset-failed",
                                 "&cTemporary password creation failed. Check the server log."));
@@ -194,7 +197,7 @@ public final class AuthAdminCommand implements TabExecutor {
             return;
         }
         action.apply(args[1]).whenComplete((success, error) ->
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                scheduler.schedule(sender, () -> {
                     if (error != null) {
                         sender.sendMessage(message("messages.admin-operation-failed",
                                 "&cOperation failed. Check the server log."));
@@ -208,7 +211,7 @@ public final class AuthAdminCommand implements TabExecutor {
     }
 
     private void sendResult(CommandSender sender, List<String> lines, Throwable error) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        scheduler.schedule(sender, () -> {
             if (error != null) {
                 sender.sendMessage(message("messages.admin-operation-failed",
                         "&cOperation failed. Check the server log."));
