@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.6] - 2026-10-24
+
+### Added
+- `/authadmin doctor` reports three more risky settings: IP-unbound sessions on an offline-mode
+  server, Argon2 parameters below the OWASP minimum, and unencrypted PostgreSQL to a remote
+  host (translated into all bundled languages). Thanks to @nicki41.
+
+### Security
+- Paper: players who have not logged in only see the commands in `restrictions.allowed-commands`
+  in their command list and tab completion; the list is re-sent on login and logout. Thanks to
+  @nicki41.
+
+### Changed
+- The Argon2 and database worker threads now have descriptive names (`authsecured-argon2-N`,
+  `authsecured-database-N`) for thread dumps and profilers; Argon2 workers are daemon threads.
+  Thanks to @nicki41.
+
+### Contributors
+- Thanks to [@nicki41](https://github.com/nicki41) for the doctor checks (#8), hiding commands
+  before login on Paper (#9) and the descriptive worker thread names (#10).
+
 ## [1.2.5] - 2026-10-24
 
 ### Fixed
