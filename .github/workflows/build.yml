@@ -30,7 +30,7 @@ jobs:
           java-version: |
             26
             21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Run tests and build both artifacts
         run: ./gradlew $GRADLE_TOOLCHAINS clean test :platform-paper:build :platform-fabric:build
       - uses: actions/upload-artifact@v4
@@ -70,6 +70,6 @@ jobs:
           java-version: |
             26
             21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build and test the Fabric artifact
         run: ./gradlew $GRADLE_TOOLCHAINS :platform-fabric:clean :platform-fabric:build -Pminecraft_version=${{ matrix.minecraft }}
