@@ -23,7 +23,7 @@ jobs:
     name: Tests, Paper and Fabric (default version)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -47,7 +47,7 @@ jobs:
     outputs:
       minecraft: ${{ steps.list.outputs.minecraft }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: list
         # build_fabric_matrix.sh is the single list of supported Fabric targets.
         run: |
@@ -63,7 +63,7 @@ jobs:
       matrix:
         minecraft: ${{ fromJson(needs.fabric-versions.outputs.minecraft) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
