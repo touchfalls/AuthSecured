@@ -2,6 +2,7 @@ package io.github.touchfalls.authsecured.infrastructure.database;
 
 import io.github.touchfalls.authsecured.domain.account.Account;
 import io.github.touchfalls.authsecured.domain.account.AccountStatus;
+import io.github.touchfalls.authsecured.ports.AccountLimitExceededException;
 import io.github.touchfalls.authsecured.ports.AccountRepository;
 import io.github.touchfalls.authsecured.ports.DuplicateAccountException;
 
@@ -66,7 +67,7 @@ public class PostgresAccountRepository implements AccountRepository {
     }
 
     @Override
-    public CompletableFuture<Account> save(Account account, byte[] registrationIpHash) {
+    public CompletableFuture<Account> save(Account account, byte[] registrationIpHash, int maxAccountsPerIp) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = "INSERT INTO accounts (uuid, username, username_normalized, password_hash, status, " +
                     "failed_login_attempts, locked_until, created_at, updated_at, last_login_at, password_changed_at, " +
@@ -90,7 +91,13 @@ public class PostgresAccountRepository implements AccountRepository {
                         ? Timestamp.from(account.getTemporaryPasswordExpiresAt()) : null);
                 stmt.setBytes(14, registrationIpHash);
 
+                // Every server sharing this database takes the same per-IP lock, held until commit.
+                // On an exception HikariCP rolls back and restores auto-commit when the connection returns.
+                conn.setAutoCommit(false);
+                lockIpHash(conn, registrationIpHash);
+                checkIpLimit(conn, registrationIpHash, maxAccountsPerIp);
                 try (ResultSet rs = stmt.executeQuery()) {
+                    conn.commit();
                     if (rs.next()) {
                         long generatedId = rs.getLong(1);
                         return new Account(generatedId, account.getUuid(), account.getUsername(),
@@ -260,19 +267,12 @@ public class PostgresAccountRepository implements AccountRepository {
         return CompletableFuture.supplyAsync(() -> {
             // Counts the accounts table directly so the cap survives disabled audit
             // logging and audit retention, instead of depending on security_events rows.
-            String sql = "SELECT COUNT(*) FROM accounts WHERE registration_ip_hash = ?";
-            try (Connection conn = dataSource.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setBytes(1, ipHash);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getLong(1);
-                    }
-                }
+            try (Connection conn = dataSource.getConnection()) {
+                return countByIpHash(conn, ipHash);
             } catch (SQLException e) {
+                // Fails open: save() repeats this check atomically and is the real guard.
                 return 0L;
             }
-            return 0L;
         }, executor);
     }
 
@@ -299,6 +299,30 @@ public class PostgresAccountRepository implements AccountRepository {
         return new Account(id, uuid, username, usernameNormalized, passwordHash, status,
                 failedAttempts, lockedUntil, createdAt, updatedAt, lastLoginAt, passwordChangedAt,
                 passwordChangeRequired, temporaryPasswordExpiresAt);
+    }
+
+    private static void lockIpHash(Connection conn, byte[] ipHash) throws SQLException {
+        if (ipHash == null || ipHash.length == 0) return;
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT pg_advisory_xact_lock(?)")) {
+            stmt.setLong(1, java.nio.ByteBuffer.wrap(java.util.Arrays.copyOf(ipHash, Long.BYTES)).getLong());
+            stmt.executeQuery().close();
+        }
+    }
+
+    private static long countByIpHash(Connection conn, byte[] ipHash) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "SELECT COUNT(*) FROM accounts WHERE registration_ip_hash = ?")) {
+            stmt.setBytes(1, ipHash);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : 0L;
+            }
+        }
+    }
+
+    private static void checkIpLimit(Connection conn, byte[] ipHash, int maxAccountsPerIp) throws SQLException {
+        if (ipHash != null && ipHash.length > 0 && countByIpHash(conn, ipHash) >= maxAccountsPerIp) {
+            throw new AccountLimitExceededException("Registration IP already has the maximum number of accounts");
+        }
     }
 
     private static boolean isUniqueConstraintViolation(SQLException exception) {

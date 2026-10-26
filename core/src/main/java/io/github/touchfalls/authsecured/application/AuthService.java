@@ -169,35 +169,6 @@ public class AuthService {
                 });
     }
 
-    /** @deprecated Use {@link #issueTemporaryPassword(String, int, long)} to avoid secret command arguments. */
-    @Deprecated
-    public CompletableFuture<Boolean> resetPassword(String username, char[] newPassword) {
-        if (!passwordService.validatePolicy(newPassword)) {
-            return CompletableFuture.completedFuture(false);
-        }
-        String normalized = UsernameNormalizer.normalize(username);
-        return accountRepository.findByUsernameNormalized(normalized)
-                .thenCompose(optAccount -> {
-                    if (optAccount.isEmpty()) return CompletableFuture.completedFuture(false);
-                    Account account = optAccount.get();
-                    return passwordService.hashPasswordAsync(newPassword)
-                            .thenCompose(newHash -> {
-                                Instant now = Instant.now();
-                                return accountRepository.updatePasswordHash(account.getId(), newHash, now)
-                                        .thenCompose(updated -> updated
-                                                ? accountRepository.unlock(account.getId(), now)
-                                                : CompletableFuture.completedFuture(false))
-                                        .thenCompose(updated -> updated
-                                                ? sessionService.revokeAllSessionsForAccount(account.getId()).thenApply(v -> true)
-                                                : CompletableFuture.completedFuture(false));
-                            });
-                });
-    }
-
-    public CompletableFuture<Boolean> unregister(String username) {
-        return unregisterAccount(username).thenApply(Optional::isPresent);
-    }
-
     /** Deletes the account and revokes its sessions; yields the owner's UUID if an account was deleted. */
     public CompletableFuture<Optional<UUID>> unregisterAccount(String username) {
         String normalized = UsernameNormalizer.normalize(username);

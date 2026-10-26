@@ -20,6 +20,8 @@ public class PlayerCommandListener implements Listener {
 
     private final PlayerRestrictionManager restrictionManager;
     private final ConfigManager configManager;
+    private record AllowedCommands(List<String> source, Set<String> commands) {}
+    private volatile AllowedCommands allowed = new AllowedCommands(List.of(), Set.of());
 
     private static final List<String> DEFAULT_ALLOWED = List.of(
             "/login", "/l",
@@ -81,9 +83,16 @@ public class PlayerCommandListener implements Listener {
     }
 
     private Set<String> allowedCommands() {
-        return configManager.getStringList("restrictions.allowed-commands", DEFAULT_ALLOWED).stream()
-                .map(command -> command.toLowerCase(Locale.ROOT))
-                .collect(Collectors.toSet());
+        List<String> source = configManager.getStringList("restrictions.allowed-commands", DEFAULT_ALLOWED);
+        AllowedCommands current = allowed;
+        if (!source.equals(current.source())) {
+            // Rebuilt only after a reload changed the list, not on every command or tab request.
+            current = new AllowedCommands(source, source.stream()
+                    .map(command -> command.toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toUnmodifiableSet()));
+            allowed = current;
+        }
+        return current.commands();
     }
 
     /** Keeps only labels on the allow-list, which holds labels with their leading slash. */

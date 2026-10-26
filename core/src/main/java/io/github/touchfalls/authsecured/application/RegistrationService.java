@@ -4,6 +4,7 @@ import io.github.touchfalls.authsecured.domain.account.Account;
 import io.github.touchfalls.authsecured.domain.auth.AuthResult;
 import io.github.touchfalls.authsecured.domain.security.SecurityEventType;
 import io.github.touchfalls.authsecured.ports.AccountRepository;
+import io.github.touchfalls.authsecured.ports.AccountLimitExceededException;
 import io.github.touchfalls.authsecured.ports.DuplicateAccountException;
 import io.github.touchfalls.authsecured.ports.PlatformLogger;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
@@ -72,7 +73,7 @@ public class RegistrationService {
                                             return passwordService.hashPasswordAsync(password)
                                                     .thenCompose(hash -> {
                                                         Account account = Account.createNew(playerUuid, username, normalizedUsername, hash);
-                                                        return accountRepository.save(account, ipHash)
+                                                        return accountRepository.save(account, ipHash, rateLimitService.getMaxRegistrationsPerIp())
                                                                 .thenCompose(savedAccount -> {
                                                                     return securityService.logSecurityEvent(savedAccount.getId(),
                                                                                     SecurityEventType.REGISTER_SUCCESS, ipHash, "{}")
@@ -83,6 +84,7 @@ public class RegistrationService {
                             });
                 }).exceptionally(ex -> {
                     if (isDuplicateAccount(ex)) return AuthResult.ALREADY_REGISTERED;
+                    if (hasCause(ex, AccountLimitExceededException.class)) return AuthResult.RATE_LIMITED;
                     if (logger != null) logger.severe("Registration failed internally ("
                             + FailureDiagnostics.causeTypes(ex) + "). Sensitive details are hidden.");
                     return AuthResult.INTERNAL_ERROR;
@@ -90,9 +92,13 @@ public class RegistrationService {
     }
 
     private static boolean isDuplicateAccount(Throwable error) {
+        return hasCause(error, DuplicateAccountException.class);
+    }
+
+    private static boolean hasCause(Throwable error, Class<? extends Throwable> type) {
         Throwable current = error;
         while (current != null) {
-            if (current instanceof DuplicateAccountException) return true;
+            if (type.isInstance(current)) return true;
             current = current.getCause();
         }
         return false;

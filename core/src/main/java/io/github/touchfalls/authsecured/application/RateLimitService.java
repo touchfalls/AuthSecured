@@ -80,6 +80,10 @@ public class RateLimitService {
         return rateLimitStore.reset(accountKey).thenCompose(v -> rateLimitStore.reset(lockKey));
     }
 
+    public int getMaxRegistrationsPerIp() {
+        return maxRegPerIp;
+    }
+
     public CompletableFuture<Boolean> isRegistrationAllowed(byte[] ipHash, long registeredAccountCount) {
         if (registeredAccountCount >= maxRegPerIp) {
             return CompletableFuture.completedFuture(false);

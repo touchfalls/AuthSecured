@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DatabaseManager {
@@ -251,6 +252,16 @@ public final class DatabaseManager {
     public void close() {
         if (dbExecutor != null && !dbExecutor.isShutdown()) {
             dbExecutor.shutdown();
+            try {
+                // Queued writes such as audit records need the pool, so it closes only after them.
+                if (!dbExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    logger.warning("Database writes still pending after 5 seconds were dropped at shutdown.");
+                    dbExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                dbExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
