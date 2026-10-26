@@ -7,6 +7,7 @@ import io.github.touchfalls.authsecured.paper.listener.*;
 import io.github.touchfalls.authsecured.paper.logging.PaperSensitiveCommandLogFilter;
 import io.github.touchfalls.authsecured.paper.player.PaperMovementLock;
 import io.github.touchfalls.authsecured.paper.player.PlayerRestrictionManager;
+import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
 import io.github.touchfalls.authsecured.util.SecretRedactor;
 import org.bukkit.Bukkit;
@@ -24,9 +25,11 @@ public class PluginBootstrap {
     private PlayerRestrictionManager restrictionManager;
     private PaperSensitiveCommandLogFilter sensitiveCommandLogFilter;
     private PaperMovementLock movementLock;
+    private final PaperScheduler scheduler;
 
     public PluginBootstrap(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.scheduler = PaperScheduler.create(plugin);
     }
 
     public void enable() {
@@ -34,7 +37,7 @@ public class PluginBootstrap {
             this.sensitiveCommandLogFilter = PaperSensitiveCommandLogFilter.install();
             this.restrictionManager = new PlayerRestrictionManager();
             PaperPlayerRestrictionAdapter restrictionAdapter = new PaperPlayerRestrictionAdapter(restrictionManager);
-            PaperAuthPlatform platform = new PaperAuthPlatform(plugin, restrictionAdapter);
+            PaperAuthPlatform platform = new PaperAuthPlatform(plugin, restrictionAdapter, scheduler);
 
             this.container = new DependencyContainer(platform);
             this.container.init();
@@ -51,8 +54,10 @@ public class PluginBootstrap {
             registerMaintenanceTask();
             for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
                 // Reload with players online: everyone must authenticate again.
-                restrictionManager.setPlayerUnauthenticated(player.getUniqueId(), player.getLocation());
-                player.updateCommands();
+                scheduler.runOrSchedule(player, () -> {
+                    restrictionManager.setPlayerUnauthenticated(player.getUniqueId(), player.getLocation());
+                    player.updateCommands();
+                });
             }
         } catch (Throwable failure) {
             // Errors (LinkageError, missing server APIs) must also fail closed: if this method
@@ -74,21 +79,26 @@ public class PluginBootstrap {
         }
         container = null;
         HandlerList.unregisterAll(plugin);
-        Bukkit.getScheduler().cancelTasks(plugin);
+        scheduler.cancelTasks();
         Bukkit.getPluginManager().registerEvents(new InitializationFailureListener(), plugin);
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
-            player.kickPlayer("AuthSecured failed to initialize. Contact the server administrator.");
+            scheduler.runOrSchedule(player, () ->
+                    player.kickPlayer("AuthSecured failed to initialize. Contact the server administrator."));
         }
         plugin.getLogger().severe("AuthSecured initialization failed (" + FailureDiagnostics.causeTypes(failure)
                 + "). New logins are blocked. Sensitive configuration details are hidden.");
     }
 
     public void disable() {
-        if (movementLock != null) {
-            movementLock.unlockAll();
-        }
-        if (container != null) {
-            container.close();
+        try {
+            if (movementLock != null) {
+                movementLock.unlockAll();
+            }
+        } finally {
+            // The database pool and hash threads must close even if restoring speeds fails.
+            if (container != null) {
+                container.close();
+            }
         }
         if (sensitiveCommandLogFilter != null) {
             sensitiveCommandLogFilter.close();
@@ -105,10 +115,12 @@ public class PluginBootstrap {
                 container.getConfigManager(),
                 container.getIpHashService(),
                 container.getAuthenticationTimeoutService(),
-                plugin
+                plugin,
+                scheduler
         ), plugin);
 
-        pm.registerEvents(new PaperSensitiveCommandListener(plugin, restrictionManager, container.getConfigManager()), plugin);
+        pm.registerEvents(new PaperSensitiveCommandListener(plugin, restrictionManager, container.getConfigManager(),
+                scheduler), plugin);
 
         pm.registerEvents(new PlayerAuthRestrictionListener(
                 restrictionManager,
@@ -130,7 +142,7 @@ public class PluginBootstrap {
         registerCmd("login", new LoginCommand(container.getCommandExecutor(), container.getConfigManager()));
         registerCmd("register", new RegisterCommand(container.getCommandExecutor(), container.getConfigManager()));
         registerCmd("changepassword", new ChangePasswordCommand(container.getCommandExecutor(), container.getConfigManager()));
-        AuthAdminCommand adminCommand = new AuthAdminCommand(container, plugin);
+        AuthAdminCommand adminCommand = new AuthAdminCommand(container, plugin, scheduler);
         registerCmd("authadmin", adminCommand);
         PluginCommand authAdmin = plugin.getCommand("authadmin");
         if (authAdmin != null) {
@@ -164,7 +176,7 @@ public class PluginBootstrap {
     }
 
     private void registerAuthenticationTimeoutTask() {
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+        scheduler.scheduleGlobalTimer(() -> {
             for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
                 if (!restrictionManager.isAuthenticated(player.getUniqueId())) {
                     container.getAuthenticationTimeoutService().ensureStarted(player.getUniqueId());
@@ -180,10 +192,11 @@ public class PluginBootstrap {
                     );
                     org.bukkit.entity.Player player = Bukkit.getPlayer(uuid);
                     if (player != null) {
-                        player.kickPlayer(container.getConfigManager().getMessage(
+                        String reason = container.getConfigManager().getMessage(
                                 "messages.authentication-timeout-kick",
                                 "&cAuthentication time expired. Reconnect and try again."
-                        ));
+                        );
+                        scheduler.runOrSchedule(player, () -> player.kickPlayer(reason));
                     }
                 }
             }
@@ -191,7 +204,7 @@ public class PluginBootstrap {
     }
 
     private void registerMaintenanceTask() {
-        Bukkit.getScheduler().runTaskTimer(plugin,
+        scheduler.scheduleGlobalTimer(
                 () -> container.getMaintenanceService().runIfDue(System.currentTimeMillis()),
                 20L, 20L);
     }

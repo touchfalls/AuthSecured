@@ -70,6 +70,11 @@ class UnifiedCommandServiceTest {
             task.run();
             return null;
         }).when(platform).runTaskOnMainThread(any());
+        doAnswer(invocation -> {
+            Runnable task = invocation.getArgument(1);
+            task.run();
+            return null;
+        }).when(platform).runTaskForPlayer(any(), any());
 
         localizationManager = new LocalizationManager(tempDir, "en", DUMMY_LOGGER);
         ipHashService = new IpHashService("test-secret");
@@ -216,6 +221,20 @@ class UnifiedCommandServiceTest {
     }
 
     @Test
+    @DisplayName("Player state changes run on the thread that owns that player")
+    void playerStateChangesAreScheduledForThatPlayer() {
+        UUID playerUuid = UUID.randomUUID();
+        when(authService.login(eq(playerUuid), eq("TestPlayer"), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(AuthResult.SUCCESS));
+
+        commandExecutor.executeLogin(playerUuid, "TestPlayer", "Pass123456!".toCharArray(), "127.0.0.1").join();
+
+        // Folia has no main thread: the platform must be told whose state changes.
+        verify(platform).runTaskForPlayer(eq(playerUuid), any());
+        verify(platform, never()).runTaskOnMainThread(any());
+    }
+
+    @Test
     @DisplayName("Revoking authentication returns an online player to the pre-login state")
     void revokeAuthenticationRestrictsAnOnlinePlayerAgain() {
         UUID playerUuid = UUID.randomUUID();
@@ -226,6 +245,7 @@ class UnifiedCommandServiceTest {
 
         executor.revokeAuthentication(playerUuid, "messages.admin-password-reset-notice", "fallback");
 
+        verify(platform).runTaskForPlayer(eq(playerUuid), any());
         verify(restrictionAdapter).setPlayerUnauthenticated(playerUuid, null);
         verify(platform).sendMessage(eq(playerUuid), contains("administrator"));
         assertEquals(List.of(playerUuid), timeouts.drainExpired(Instant.now().plusSeconds(6)));

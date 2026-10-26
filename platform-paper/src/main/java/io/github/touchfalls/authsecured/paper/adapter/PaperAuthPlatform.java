@@ -1,5 +1,6 @@
 package io.github.touchfalls.authsecured.paper.adapter;
 
+import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
 import io.github.touchfalls.authsecured.ports.AuthPlatform;
 import io.github.touchfalls.authsecured.ports.PlatformLogger;
 import io.github.touchfalls.authsecured.ports.PlayerRestrictionAdapter;
@@ -15,11 +16,13 @@ public class PaperAuthPlatform implements AuthPlatform {
     private final Plugin plugin;
     private final PlatformLogger logger;
     private final PlayerRestrictionAdapter restrictionAdapter;
+    private final PaperScheduler scheduler;
 
-    public PaperAuthPlatform(Plugin plugin, PlayerRestrictionAdapter restrictionAdapter) {
+    public PaperAuthPlatform(Plugin plugin, PlayerRestrictionAdapter restrictionAdapter, PaperScheduler scheduler) {
         this.plugin = plugin;
         this.logger = new PaperLogger(plugin.getLogger());
         this.restrictionAdapter = restrictionAdapter;
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -48,10 +51,17 @@ public class PaperAuthPlatform implements AuthPlatform {
 
     @Override
     public void runTaskOnMainThread(Runnable task) {
-        if (Bukkit.isPrimaryThread()) {
-            task.run();
+        scheduler.runOrScheduleGlobal(task);
+    }
+
+    @Override
+    public void runTaskForPlayer(UUID playerUuid, Runnable task) {
+        Player player = Bukkit.getPlayer(playerUuid);
+        if (player == null) {
+            // The task finds the player gone and only cleans up; no region owns them anymore.
+            scheduler.runOrScheduleGlobal(task);
         } else {
-            Bukkit.getScheduler().runTask(plugin, task);
+            scheduler.runOrSchedule(player, task);
         }
     }
 
@@ -76,7 +86,7 @@ public class PaperAuthPlatform implements AuthPlatform {
     public void disconnectPlayer(UUID playerUuid, String reason) {
         Player player = Bukkit.getPlayer(playerUuid);
         if (player != null && player.isOnline()) {
-            player.kickPlayer(reason);
+            scheduler.runOrSchedule(player, () -> player.kickPlayer(reason));
         }
     }
 }

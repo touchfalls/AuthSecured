@@ -53,6 +53,7 @@ public final class PaperMovementLock implements PlayerRestrictionManager.Movemen
 
     /** Restores every frozen online player, used when the plugin is disabled. */
     public void unlockAll() {
+        // Not scheduled: a disabled plugin cannot schedule on Folia, and no region ticks during disable.
         for (UUID playerUuid : Map.copyOf(savedSpeeds).keySet()) {
             unlock(playerUuid);
         }
