@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.7] - 2026-10-26
+
+### Added
+- Paper: Folia support. Player-bound work runs on the region that owns the player, global work on
+  the global scheduler. Thanks to @nicki41.
+- `session.extend-while-online` (default `false`): keeps an online player's session alive, so the
+  session timeout counts from when they leave instead of from login. Applied by
+  `/authadmin reload`. Thanks to @nicki41.
+
+### Security
+- The per-IP account limit is checked in the same step as the insert, so simultaneous
+  registrations can no longer exceed `max-accounts-per-ip` (SQLite lock; PostgreSQL per-IP
+  advisory lock, shared across servers on one database). A full IP is reported as `RATE_LIMITED`.
+- `/authadmin doctor` treats only numeric `127.x.x.x` addresses as loopback, so a host such as
+  `127.db.example.com` still gets the TLS warning.
+
+### Fixed
+- Audit and login records queued at shutdown are written before the database pool closes.
+
+### Changed
+- Paper: the allowed-commands list is rebuilt only when the configured list changes.
+- Removed unused `AuthService` methods that skipped the online logout.
+
 ## [1.2.6] - 2026-10-24
 
 ### Added
