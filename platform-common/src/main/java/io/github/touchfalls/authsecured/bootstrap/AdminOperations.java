@@ -260,7 +260,7 @@ public final class AdminOperations {
         if (host == null) return true;
         String normalized = host.strip().toLowerCase(Locale.ROOT);
         return normalized.equals("localhost") || normalized.equals("::1") || normalized.equals("[::1]")
-                || normalized.startsWith("127.");
+                || normalized.matches("127(\\.\\d{1,3}){3}");
     }
 
     private static String color(boolean healthy) {

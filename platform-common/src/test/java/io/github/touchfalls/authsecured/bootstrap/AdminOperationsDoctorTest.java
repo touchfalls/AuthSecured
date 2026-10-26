@@ -103,6 +103,14 @@ class AdminOperationsDoctorTest {
         Files.writeString(directory.resolve("config.yml"), yaml);
     }
 
+    @Test
+    void onlyNumericLoopbackAddressesCountAsLocal() {
+        assertTrue(AdminOperations.isLoopbackHost("127.0.0.1"));
+        assertTrue(AdminOperations.isLoopbackHost("localhost"));
+        // A remote host name that merely starts with "127." must still get the TLS warning.
+        assertFalse(AdminOperations.isLoopbackHost("127.db.example.com"));
+    }
+
     private static boolean failed(List<String> lines, String text) {
         return lines.stream().anyMatch(line -> line.contains("[FAIL]") && line.contains(text));
     }

@@ -10,6 +10,7 @@ import io.github.touchfalls.authsecured.domain.auth.LoginAttempt;
 import io.github.touchfalls.authsecured.domain.security.SecurityEvent;
 import io.github.touchfalls.authsecured.domain.security.SecurityEventType;
 import io.github.touchfalls.authsecured.ports.PlatformLogger;
+import io.github.touchfalls.authsecured.ports.AccountLimitExceededException;
 import io.github.touchfalls.authsecured.ports.DuplicateAccountException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,6 +166,54 @@ class SqliteAccountRepositoryTest {
 
         // No security_events rows were written at all: the cap must still count from accounts.
         assertEquals(2L, repository.countAccountsByIpHash(ipHash).join());
+    }
+
+    @Test
+    void closeLetsQueuedWritesFinish() throws Exception {
+        // Both worker threads are busy, so the save is still queued when close() starts.
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        for (int i = 0; i < 2; i++) {
+            databaseManager.getDbExecutor().submit(() -> {
+                release.await();
+                return null;
+            });
+        }
+        java.util.concurrent.CompletableFuture<Account> queued = repository.save(
+                Account.createNew(UUID.randomUUID(), "Late", "late", "hash"), null);
+        new Thread(() -> {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ignored) {
+            }
+            release.countDown();
+        }).start();
+
+        databaseManager.close();
+
+        assertNotNull(queued.join().getId());
+        databaseManager = null;
+    }
+
+    @Test
+    void concurrentRegistrationsCannotExceedThePerIpLimit() {
+        byte[] ipHash = {4, 5, 6};
+        java.util.List<java.util.concurrent.CompletableFuture<Account>> saves = new java.util.ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            saves.add(repository.save(Account.createNew(UUID.randomUUID(), "Alt" + i, "alt" + i, "hash"), ipHash, 3));
+        }
+
+        long saved = saves.stream().filter(save -> {
+            try {
+                save.join();
+                return true;
+            } catch (java.util.concurrent.CompletionException e) {
+                assertTrue(e.getCause() instanceof AccountLimitExceededException, e.toString());
+                return false;
+            }
+        }).count();
+
+        assertEquals(3, saved);
+        assertEquals(3L, repository.countAccountsByIpHash(ipHash).join());
     }
 
     @Test

@@ -16,7 +16,16 @@ public interface AccountRepository {
      *                           logging disabled or its retention period elapsed; null
      *                           if the IP was unavailable.
      */
-    CompletableFuture<Account> save(Account account, byte[] registrationIpHash);
+    /**
+     * Inserts the account unless {@code maxAccountsPerIp} accounts already have this registration
+     * IP hash. The count and the insert are one atomic step, so registrations running at the same
+     * time cannot exceed the limit; a full IP fails with {@link AccountLimitExceededException}.
+     */
+    CompletableFuture<Account> save(Account account, byte[] registrationIpHash, int maxAccountsPerIp);
+
+    default CompletableFuture<Account> save(Account account, byte[] registrationIpHash) {
+        return save(account, registrationIpHash, Integer.MAX_VALUE);
+    }
     CompletableFuture<Boolean> incrementFailedAttemptsAtomic(Long accountId, int maxAttempts,
                                                               long lockDurationSeconds, Instant now);
     CompletableFuture<Boolean> resetFailedAttemptsAtomic(Long accountId, Instant now);

@@ -10,17 +10,13 @@ public final class TemporaryPasswordReset {
     private final char[] password;
     private final Instant expiresAt;
 
-    public TemporaryPasswordReset(char[] password, Instant expiresAt) {
-        this(null, password, expiresAt);
-    }
-
     public TemporaryPasswordReset(UUID playerUuid, char[] password, Instant expiresAt) {
         this.playerUuid = playerUuid;
         this.password = password == null ? new char[0] : password.clone();
         this.expiresAt = expiresAt;
     }
 
-    /** UUID of the account the password was issued for, or null if the issuer did not record it. */
+    /** UUID of the account the password was issued for. */
     public UUID getPlayerUuid() { return playerUuid; }
     public char[] copyPassword() { return password.clone(); }
     public Instant getExpiresAt() { return expiresAt; }
