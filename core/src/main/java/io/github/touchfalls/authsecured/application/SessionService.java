@@ -5,6 +5,8 @@ import io.github.touchfalls.authsecured.ports.SessionRepository;
 
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +20,7 @@ public class SessionService {
     private final boolean persistent;
     private final AtomicLong timeoutSeconds;
     private final boolean verifyIp;
+    private volatile boolean extendWhileOnline;
     private final CompletableFuture<Void> initialization;
     private final Map<UUID, Session> volatileSessions = new ConcurrentHashMap<>();
 
@@ -113,6 +116,28 @@ public class SessionService {
                         .orElseGet(() -> CompletableFuture.completedFuture(null)));
     }
 
+    /**
+     * Keeps the sessions of players who are still online from expiring: their expiry moves to
+     * now plus the session timeout, so the lifetime counts from when they leave instead of
+     * from login. Only takes effect when {@code session.extend-while-online} is enabled.
+     */
+    public CompletableFuture<Void> extendActiveSessions(Collection<UUID> playerUuids) {
+        if (!enabled || !extendWhileOnline || playerUuids == null || playerUuids.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        Instant expiresAt = Instant.now().plusSeconds(timeoutSeconds.get());
+        if (!persistent) {
+            return initialization.thenRun(() -> {
+                Instant now = Instant.now();
+                for (UUID playerUuid : playerUuids) {
+                    volatileSessions.computeIfPresent(playerUuid, (uuid, session) ->
+                            session.isValid(now) ? session.withExpiresAt(expiresAt) : session);
+                }
+            });
+        }
+        return sessionRepository.extendActive(List.copyOf(playerUuids), expiresAt);
+    }
+
     public CompletableFuture<Void> cleanupExpiredSessions() {
         if (!persistent) {
             return initialization.thenRun(() -> {
@@ -140,6 +165,8 @@ public class SessionService {
     public long getTimeoutSeconds() { return timeoutSeconds.get(); }
     public void setTimeoutSeconds(long seconds) { timeoutSeconds.set(validateTimeout(seconds)); }
     public boolean isVerifyIp() { return verifyIp; }
+    public boolean isExtendWhileOnline() { return extendWhileOnline; }
+    public void setExtendWhileOnline(boolean extendWhileOnline) { this.extendWhileOnline = extendWhileOnline; }
 
     private static long validateTimeout(long seconds) {
         if (seconds < 1 || seconds > 2_592_000L) {

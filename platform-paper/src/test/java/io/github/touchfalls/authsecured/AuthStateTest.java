@@ -51,6 +51,20 @@ class AuthStateTest {
     }
 
     @Test
+    void authenticatedPlayerSnapshotFollowsState() {
+        PlayerRestrictionManager manager = new PlayerRestrictionManager();
+        UUID authenticated = UUID.randomUUID();
+        UUID pending = UUID.randomUUID();
+
+        manager.setPlayerUnauthenticated(pending, null);
+        manager.setPlayerAuthenticated(authenticated);
+        assertEquals(java.util.Set.of(authenticated), manager.getAuthenticatedPlayers());
+
+        manager.removePlayer(authenticated);
+        assertTrue(manager.getAuthenticatedPlayers().isEmpty());
+    }
+
+    @Test
     void commandListIsRefreshedOnlyWhenAuthenticationChanges() {
         PlayerRestrictionManager manager = new PlayerRestrictionManager();
         java.util.List<UUID> refreshed = new java.util.ArrayList<>();

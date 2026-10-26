@@ -145,8 +145,18 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             UUID uuid = handler.getPlayer().getUUID();
-            if (container != null) {
-                container.getAuthenticationTimeoutService().clear(uuid);
+            boolean authenticated = restrictionAdapter.isAuthenticated(uuid);
+            DependencyContainer currentContainer = container;
+            if (currentContainer != null) {
+                currentContainer.getAuthenticationTimeoutService().clear(uuid);
+                if (initialized && authenticated) {
+                    // With session.extend-while-online the session lifetime now starts at disconnect.
+                    currentContainer.getSessionService().extendActiveSessions(List.of(uuid))
+                            .exceptionally(throwable -> {
+                                LOGGER.error("Session extension failed for {}", handler.getPlayer().getName().getString());
+                                return null;
+                            });
+                }
             }
             restrictionAdapter.removePlayer(uuid);
             playerAddresses.remove(uuid);

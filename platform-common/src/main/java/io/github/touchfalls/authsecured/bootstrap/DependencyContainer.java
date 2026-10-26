@@ -149,13 +149,15 @@ public final class DependencyContainer implements AutoCloseable {
                 configManager.getBoolean("session.persistent", true),
                 sessionTimeoutSeconds,
                 configManager.getBoolean("session.verify-ip", true));
+        this.sessionService.setExtendWhileOnline(configManager.getBoolean("session.extend-while-online", false));
         this.sessionService.initialize().join();
 
         this.securityService = new SecurityService(
                 auditRepository, configManager.getBoolean("logging.audit.enabled", true));
         this.maintenanceService = new MaintenanceService(sessionService, securityService, logger,
                 configManager.getInt("logging.audit.cleanup-interval-seconds", 3_600, 60, 86_400),
-                configManager.getInt("logging.audit.retention-days", 30, 1, 3_650));
+                configManager.getInt("logging.audit.retention-days", 30, 1, 3_650),
+                () -> platform.getRestrictionAdapter().getAuthenticatedPlayers());
         SecurityNotifier securityNotifier = createSecurityNotifier(logger);
         RegistrationService registrationService = new RegistrationService(
                 accountRepository, passwordService, rateLimitService, securityService, logger);
@@ -245,6 +247,8 @@ public final class DependencyContainer implements AutoCloseable {
             if (sessionService != null) {
                 sessionService.setTimeoutSeconds(configManager.getInt(
                         "session.timeout-seconds", (int) sessionService.getTimeoutSeconds(), 1, 2_592_000));
+                sessionService.setExtendWhileOnline(configManager.getBoolean(
+                        "session.extend-while-online", sessionService.isExtendWhileOnline()));
             }
             if (authenticationTimeoutService != null) {
                 authenticationTimeoutService.configure(

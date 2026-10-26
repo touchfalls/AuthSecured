@@ -1,6 +1,7 @@
 package io.github.touchfalls.authsecured.ports;
 
 import io.github.touchfalls.authsecured.domain.auth.AuthState;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -20,4 +21,7 @@ public interface PlayerRestrictionAdapter {
     void removePlayer(UUID playerUuid);
     boolean isAuthenticated(UUID playerUuid);
     AuthState getAuthState(UUID playerUuid);
+
+    /** Snapshot of the online players that are currently authenticated. */
+    Set<UUID> getAuthenticatedPlayers();
 }

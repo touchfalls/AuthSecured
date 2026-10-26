@@ -6,6 +6,7 @@ import io.github.touchfalls.authsecured.ports.SessionRepository;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -147,6 +148,35 @@ public class DatabaseSessionRepository implements SessionRepository {
                 stmt.executeUpdate();
             } catch (SQLException e) {
                 throw new RuntimeException("Error revoking all sessions for account", e);
+            }
+        }, executor);
+    }
+
+    @Override
+    public CompletableFuture<Void> extendActive(Collection<UUID> playerUuids, Instant expiresAt) {
+        return CompletableFuture.runAsync(() -> {
+            String sql = isPostgres ?
+                    "UPDATE sessions SET expires_at = ? WHERE revoked_at IS NULL AND expires_at > NOW() " +
+                            "AND account_id = (SELECT id FROM accounts WHERE uuid = ?)" :
+                    "UPDATE sessions SET expires_at = ? WHERE revoked_at IS NULL AND expires_at > ? " +
+                            "AND account_id = (SELECT id FROM accounts WHERE uuid = ?)";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                String now = Instant.now().toString();
+                for (UUID playerUuid : playerUuids) {
+                    if (isPostgres) {
+                        stmt.setTimestamp(1, Timestamp.from(expiresAt));
+                        stmt.setObject(2, playerUuid);
+                    } else {
+                        stmt.setString(1, expiresAt.toString());
+                        stmt.setString(2, now);
+                        stmt.setString(3, playerUuid.toString());
+                    }
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+            } catch (SQLException e) {
+                throw new RuntimeException("Error extending active sessions", e);
             }
         }, executor);
     }

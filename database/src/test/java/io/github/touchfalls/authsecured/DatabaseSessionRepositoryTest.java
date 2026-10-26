@@ -15,6 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.sql.Connection;
@@ -90,6 +91,31 @@ class DatabaseSessionRepositoryTest {
             assertTrue(rows.next());
             assertEquals(0, rows.getInt(1));
         }
+    }
+
+    @Test
+    void extendActiveMovesOnlyStillValidSessions() {
+        UUID playerUuid = UUID.randomUUID();
+        Long accountId = new SqliteAccountRepository(databaseManager.getDataSource(),
+                databaseManager.getDbExecutor()).save(Account.createNew(
+                playerUuid, "ExtendUser", "extenduser", "hash"), null).join().getId();
+        Instant now = Instant.now();
+        Session active = new Session(UUID.randomUUID(), accountId, playerUuid, null, "server",
+                now.minusSeconds(60), now.plusSeconds(30), null);
+        Session expired = new Session(UUID.randomUUID(), accountId, playerUuid, null, "server",
+                now.minusSeconds(120), now.minusSeconds(60), null);
+        Session revoked = new Session(UUID.randomUUID(), accountId, playerUuid, null, "server",
+                now.minusSeconds(30), now.plusSeconds(30), now.minusSeconds(10));
+        repository.save(active).join();
+        repository.save(expired).join();
+        repository.save(revoked).join();
+
+        Instant extendedUntil = now.plusSeconds(3_600);
+        repository.extendActive(List.of(playerUuid, UUID.randomUUID()), extendedUntil).join();
+
+        assertEquals(extendedUntil, repository.findById(active.getId()).join().orElseThrow().getExpiresAt());
+        assertEquals(expired.getExpiresAt(), repository.findById(expired.getId()).join().orElseThrow().getExpiresAt());
+        assertEquals(revoked.getExpiresAt(), repository.findById(revoked.getId()).join().orElseThrow().getExpiresAt());
     }
 
     @Test

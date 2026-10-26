@@ -73,6 +73,10 @@ public class PlayerRestrictionManager {
         return authenticatedPlayers.contains(playerUuid);
     }
 
+    public Set<UUID> getAuthenticatedPlayers() {
+        return Set.copyOf(authenticatedPlayers);
+    }
+
     public Location getInitialLocation(UUID playerUuid) {
         return initialLocations.get(playerUuid);
     }

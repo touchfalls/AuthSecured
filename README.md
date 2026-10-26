@@ -21,7 +21,8 @@ The complete target list and Fabric API mapping are documented in
 - SQLite by default, with PostgreSQL support and HikariCP connection pooling.
 - Account and IP rate limiting through Redis or an in-memory fallback.
 - Optional reconnect sessions with persistent/non-persistent storage and IP
-  verification.
+  verification, optionally kept alive while the player stays online so a
+  reconnect or proxy server switch does not ask for the password again.
 - English, Russian, Spanish, Italian, and French messages.
 - Pre-authentication restrictions for movement, chat, commands, inventory,
   interaction, block actions, combat, item pickup/drop, and hunger.
