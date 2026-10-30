@@ -54,6 +54,8 @@ Thumbs.db
 # Logs & Database runtime files
 *.log
 *.db
+*.db-wal
+*.db-shm
 auth.db
 
 # Internal specifications

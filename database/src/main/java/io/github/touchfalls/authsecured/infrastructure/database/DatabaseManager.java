@@ -65,6 +65,10 @@ public final class DatabaseManager {
             config.setJdbcUrl("jdbc:sqlite:" + sqlitePath);
             config.setDriverClassName("org.sqlite.JDBC");
             config.setConnectionInitSql("PRAGMA foreign_keys = ON");
+            // The pool has several connections: WAL lets readers run beside a writer, and the timeout
+            // makes a second writer wait instead of failing at once with "database is locked".
+            config.addDataSourceProperty("journal_mode", "WAL");
+            config.addDataSourceProperty("busy_timeout", "5000");
             config.setConnectionTestQuery("SELECT 1");
         }
 
