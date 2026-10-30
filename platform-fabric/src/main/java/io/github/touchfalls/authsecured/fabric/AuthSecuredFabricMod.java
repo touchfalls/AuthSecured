@@ -103,8 +103,9 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
             }
 
             if (!initialized) {
-                player.sendSystemMessage(Component.literal(message("messages.initialization-failed",
-                        "§cAuthSecured is not initialized.")));
+                // No timeout runs without a container, so a frozen player would otherwise stay forever.
+                platform.disconnectPlayer(uuid, message("messages.initialization-failed",
+                        "§cAuthSecured is not initialized."));
                 return;
             }
 
