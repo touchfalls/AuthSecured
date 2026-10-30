@@ -20,7 +20,7 @@ messages:
   password-unchanged: "&cLe nouveau mot de passe doit être différent du mot de passe actuel."
   account-locked: "&cLe compte est temporairement verrouillé suite à plusieurs tentatives échouées."
   rate-limited: "&cTrop de requêtes. Veuillez réessayer plus tard."
-  password-policy-failed: "&cLe mot de passe ne respecte pas la politique de sécurité (minimum 10 caractères)."
+  password-policy-failed: "&cLe mot de passe ne respecte pas la politique de sécurité (minimum {min} caractères)."
   passwords-dont-match: "&cLes mots de passe ne correspondent pas !"
   auth-bypass: "&aMode en ligne actif : Authentifié automatiquement !"
   session-restored: "&aSession restaurée automatiquement !"

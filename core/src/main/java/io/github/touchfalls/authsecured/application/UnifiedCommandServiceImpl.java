@@ -9,6 +9,7 @@ import io.github.touchfalls.authsecured.ports.UnifiedCommandExecutor;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -72,7 +73,8 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                             case RATE_LIMITED -> "messages.rate-limited";
                             default -> "messages.error";
                         };
-                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey, "",
+                                Map.of("min", String.valueOf(authService.getPasswordMinLength()))));
                     }
                 }))
                 .exceptionally(throwable -> {
@@ -117,7 +119,8 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                             case TEMPORARY_PASSWORD_EXPIRED -> "messages.temporary-password-expired";
                             default -> "messages.error";
                         };
-                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey, "",
+                                Map.of("min", String.valueOf(authService.getPasswordMinLength()))));
                     }
                 }))
                 .exceptionally(throwable -> {
@@ -164,7 +167,8 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                             case TEMPORARY_PASSWORD_EXPIRED -> "messages.temporary-password-expired";
                             default -> "messages.error";
                         };
-                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey, "",
+                                Map.of("min", String.valueOf(authService.getPasswordMinLength()))));
                     }
                 }))
                 .exceptionally(throwable -> {

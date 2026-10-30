@@ -19,4 +19,16 @@ class PasswordPolicyTest {
 
         passwordService.shutdown();
     }
+
+    @Test
+    void testMinimumLengthBoundary() {
+        Argon2PasswordHasher hasher = new Argon2PasswordHasher(1024, 1, 1, 16, 8);
+        PasswordService passwordService = new PasswordService(hasher, 8, 128, 2);
+
+        assertEquals(8, passwordService.getMinLength());
+        assertTrue(passwordService.validatePolicy("12345678".toCharArray()));
+        assertFalse(passwordService.validatePolicy("1234567".toCharArray()));
+
+        passwordService.shutdown();
+    }
 }

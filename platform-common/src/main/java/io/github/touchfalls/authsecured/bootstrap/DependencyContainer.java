@@ -113,7 +113,7 @@ public final class DependencyContainer implements AutoCloseable {
                 configManager.getInt("security.password.argon2.salt-length", 16, 16, 64), logger);
 
         RateLimitStore rateLimitStore = createRateLimitStore(logger);
-        int minLength = configManager.getInt("security.password.min-length", 10, 8, 128);
+        int minLength = configManager.getInt("security.password.min-length", 8, 8, 128);
         int maxLength = configManager.getInt("security.password.max-length", 128, minLength, 1024);
         this.passwordService = new PasswordService(passwordHasher, minLength, maxLength, 4);
 

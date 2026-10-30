@@ -72,7 +72,7 @@ public final class ConfigManager {
         }
         validateInteger(values, "security.password.min-length", 8, 128);
         validateInteger(values, "security.password.max-length", 8, 1024);
-        int minimum = valueAsInt(values, "security.password.min-length", 10);
+        int minimum = valueAsInt(values, "security.password.min-length", 8);
         int maximum = valueAsInt(values, "security.password.max-length", 128);
         if (minimum > maximum) throw new IllegalArgumentException("password length range is invalid");
         validateInteger(values, "session.timeout-seconds", 1, 2_592_000);

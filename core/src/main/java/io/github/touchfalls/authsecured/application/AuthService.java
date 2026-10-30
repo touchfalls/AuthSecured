@@ -54,6 +54,10 @@ public class AuthService {
         return loginService.login(playerUuid, username, password, ipHash);
     }
 
+    public int getPasswordMinLength() {
+        return passwordService.getMinLength();
+    }
+
     /**
      * Changes the password after the old one passes the same checks as {@code /login}:
      * rate limits, failed-attempt counter, account lock and temporary-password expiry.

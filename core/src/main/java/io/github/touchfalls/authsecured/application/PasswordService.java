@@ -43,6 +43,10 @@ public class PasswordService {
         return len >= minLength && len <= maxLength;
     }
 
+    public int getMinLength() {
+        return minLength;
+    }
+
     public boolean needsRehash(String passwordHash) {
         return passwordHasher.needsRehash(passwordHash);
     }

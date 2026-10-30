@@ -20,7 +20,7 @@ messages:
   password-unchanged: "&cLa nuova password deve essere diversa da quella attuale."
   account-locked: "&cAccount temporaneamente bloccato a causa di troppi tentativi falliti."
   rate-limited: "&cTroppe richieste. Riprova più tardi."
-  password-policy-failed: "&cLa password non soddisfa i requisiti di sicurezza (minimo 10 caratteri)."
+  password-policy-failed: "&cLa password non soddisfa i requisiti di sicurezza (minimo {min} caratteri)."
   passwords-dont-match: "&cLe password non coincidono!"
   auth-bypass: "&aModalità online attiva: Autenticato automaticamente!"
   session-restored: "&aSessione ripristinata automaticamente!"

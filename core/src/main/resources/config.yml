@@ -42,8 +42,8 @@ security:
     secret-env: "${ENV:AUTHSECURED_IP_SECRET}"
 
   password:
-    # Accepted player password length. Allowed minimum is 8 characters.
-    min-length: 10
+    # Accepted player password length. Allowed minimum is 8 characters. Applied after a restart.
+    min-length: 8
     max-length: 128
 
     # Argon2id cost parameters. Defaults are suitable for most servers.

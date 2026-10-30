@@ -20,7 +20,7 @@ messages:
   password-unchanged: "&cThe new password must be different from the current password."
   account-locked: "&cAccount is temporarily locked due to failed attempts."
   rate-limited: "&cToo many requests. Please try again later."
-  password-policy-failed: "&cPassword does not meet length/complexity policy (minimum 10 characters)."
+  password-policy-failed: "&cPassword does not meet length/complexity policy (minimum {min} characters)."
   passwords-dont-match: "&cPasswords do not match!"
   auth-bypass: "&aOnline-mode active: Automatically authenticated!"
   session-restored: "&aSession restored automatically!"
