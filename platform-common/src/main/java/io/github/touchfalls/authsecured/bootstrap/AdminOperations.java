@@ -115,7 +115,7 @@ public final class AdminOperations {
                 String sslMode = postgresSslMode();
                 addCheck(lines, isLoopbackHost(container.getConfigManager().getString(
                                 "database.postgresql.host", "localhost"))
-                                || !Set.of("disable", "allow").contains(sslMode),
+                                || !Set.of("disable", "allow", "prefer").contains(sslMode),
                         message("messages.admin-doctor-database-tls-ok", "Database transport encryption"),
                         message("messages.admin-doctor-database-tls-fail",
                                 "PostgreSQL on a remote host uses ssl-mode {mode}, which can send data "
