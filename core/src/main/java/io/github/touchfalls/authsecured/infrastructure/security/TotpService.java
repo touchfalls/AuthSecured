@@ -89,7 +89,7 @@ public final class TotpService {
         return match;
     }
 
-    static String codeAt(byte[] secret, long step) {
+    public static String codeAt(byte[] secret, long step) {
         try {
             Mac mac = Mac.getInstance("HmacSHA1");
             mac.init(new SecretKeySpec(secret, "HmacSHA1"));

@@ -5,6 +5,7 @@ import io.github.touchfalls.authsecured.domain.auth.AuthResult;
 import io.github.touchfalls.authsecured.domain.security.SecurityEventType;
 import io.github.touchfalls.authsecured.ports.AccountRepository;
 import io.github.touchfalls.authsecured.ports.SecurityNotifier;
+import io.github.touchfalls.authsecured.ports.TotpRepository;
 import io.github.touchfalls.authsecured.ports.PlatformLogger;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
 import io.github.touchfalls.authsecured.util.UsernameNormalizer;
@@ -40,6 +41,7 @@ public class LoginService {
     private final long lockDurationSeconds;
     private final SecurityNotifier securityNotifier;
     private final PlatformLogger logger;
+    private volatile TotpRepository totpRepository;
     private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
 
     public LoginService(AccountRepository accountRepository, PasswordService passwordService,
@@ -92,16 +94,18 @@ public class LoginService {
                                         "TEMPORARY_PASSWORD_ACCEPTED"))
                                 .thenApply(v -> AuthResult.PASSWORD_CHANGE_REQUIRED);
                     }
-                    return recordSuccessfulAuthentication(account, check.usernameNormalized(), now)
-                            .thenCompose(v -> sessionService.createSession(
-                                    account.getId(), playerUuid, ipHash, "default-server"))
-                            .thenCompose(session -> securityService.logLoginAttempt(account.getId(), ipHash, true, "SUCCESS"))
-                            .thenCompose(v -> securityService.logSecurityEvent(account.getId(), SecurityEventType.LOGIN_SUCCESS, ipHash, "{}"))
-                            .thenCompose(v -> notePreviousAddress(account, ipHash))
-                            .thenApply(newAddress -> {
-                                upgradeHashIfOutdated(account, password);
-                                return newAddress ? AuthResult.SUCCESS_NEW_ADDRESS : AuthResult.SUCCESS;
-                            });
+                    return hasTwoFactor(account).thenCompose(twoFactor -> {
+                        upgradeHashIfOutdated(account, password);
+                        if (twoFactor) {
+                            // The password alone is not enough: no session and no reset of the failure
+                            // counters until the code is accepted (TwoFactorService).
+                            return securityService.logLoginAttempt(account.getId(), ipHash, false, "TWO_FACTOR_PENDING")
+                                    .thenApply(v -> AuthResult.TWO_FACTOR_REQUIRED);
+                        }
+                        return completeLogin(account, playerUuid, check.usernameNormalized(), ipHash)
+                                .thenApply(newAddress -> newAddress
+                                        ? AuthResult.SUCCESS_NEW_ADDRESS : AuthResult.SUCCESS);
+                    });
                 }).exceptionally(ex -> {
                     if (logger != null) logger.severe("Login failed internally ("
                             + FailureDiagnostics.causeTypes(ex) + "). Sensitive details are hidden.");
@@ -186,6 +190,33 @@ public class LoginService {
                 });
             });
         });
+    }
+
+    /** Enables the authenticator check in {@link #login}; without it passwords alone log in. */
+    public void enableTwoFactor(TotpRepository totpRepository) {
+        this.totpRepository = totpRepository;
+    }
+
+    // A failed lookup fails the login: with an authenticator set up, guessing wrong must never mean "allow".
+    private CompletableFuture<Boolean> hasTwoFactor(Account account) {
+        TotpRepository repository = totpRepository;
+        if (repository == null) return CompletableFuture.completedFuture(false);
+        return repository.find(account.getId())
+                .thenApply(state -> state.map(TotpRepository.State::enabled).orElse(false));
+    }
+
+    /**
+     * Everything that follows a proven login: clears the failure counters, opens the session, audits and
+     * checks the address. Returns whether the address differs from the previous login.
+     */
+    public CompletableFuture<Boolean> completeLogin(Account account, UUID playerUuid,
+                                                    String usernameNormalized, byte[] ipHash) {
+        return recordSuccessfulAuthentication(account, usernameNormalized, Instant.now())
+                .thenCompose(v -> sessionService.createSession(account.getId(), playerUuid, ipHash, "default-server"))
+                .thenCompose(session -> securityService.logLoginAttempt(account.getId(), ipHash, true, "SUCCESS"))
+                .thenCompose(v -> securityService.logSecurityEvent(
+                        account.getId(), SecurityEventType.LOGIN_SUCCESS, ipHash, "{}"))
+                .thenCompose(v -> notePreviousAddress(account, ipHash));
     }
 
     /**

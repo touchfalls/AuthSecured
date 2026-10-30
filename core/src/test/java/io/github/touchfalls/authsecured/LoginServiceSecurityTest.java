@@ -185,4 +185,38 @@ class LoginServiceSecurityTest {
             assertEquals(expected, service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join());
         }
     }
+
+    @Test
+    void passwordAloneDoesNotLogInAnAccountWithAnAuthenticator() {
+        AccountRepository accounts = mock(AccountRepository.class);
+        PasswordService passwords = mock(PasswordService.class);
+        RateLimitService limits = mock(RateLimitService.class);
+        SecurityService security = mock(SecurityService.class);
+        SessionService sessions = mock(SessionService.class);
+        io.github.touchfalls.authsecured.ports.TotpRepository totp = mock(io.github.touchfalls.authsecured.ports.TotpRepository.class);
+        UUID uuid = UUID.randomUUID();
+        Account account = Account.createNew(uuid, "Player", "player", "hash");
+
+        when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+        when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+        when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(true));
+        when(totp.find(any())).thenReturn(CompletableFuture.completedFuture(Optional.of(
+                new io.github.touchfalls.authsecured.ports.TotpRepository.State(new byte[]{1}, true, 0, java.util.List.of()))));
+
+        LoginService service = new LoginService(accounts, passwords, limits, sessions, security, 5, 900);
+        service.enableTwoFactor(totp);
+
+        assertEquals(AuthResult.TWO_FACTOR_REQUIRED,
+                service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join());
+        verify(sessions, never()).createSession(any(), any(), any(), anyString());
+        verify(accounts, never()).resetFailedAttemptsAtomic(any(), any());
+
+        when(totp.find(any())).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("db down")));
+        assertEquals(AuthResult.INTERNAL_ERROR,
+                service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join(),
+                "a failed lookup must deny the login, not skip the second factor");
+    }
 }
