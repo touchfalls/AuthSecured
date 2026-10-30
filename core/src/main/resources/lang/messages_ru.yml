@@ -31,6 +31,7 @@ messages:
   error: "&cПроизошла внутренняя ошибка сервера."
   only-players: "&cЭту команду могут использовать только игроки."
   initialization-failed: "&cAuthSecured не инициализирован."
+  duplicate-login-denied: "&cЭтот игрок уже на сервере. Подключитесь с того же адреса или попробуйте позже."
   auth-status-authenticated: "&aСтатус авторизации: вы авторизованы."
   auth-status-required: "&cСтатус авторизации: требуется вход."
   admin-reloaded: "&aКонфигурация и переводы перезагружены."

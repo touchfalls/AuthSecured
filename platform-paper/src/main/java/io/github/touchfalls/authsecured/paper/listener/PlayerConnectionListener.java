@@ -11,10 +11,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +42,33 @@ public class PlayerConnectionListener implements Listener {
         this.authenticationTimeoutService = authenticationTimeoutService;
         this.plugin = plugin;
         this.scheduler = scheduler;
+    }
+
+    /**
+     * Vanilla kicks the online player when the same UUID joins again. In offline mode anyone can join
+     * under another player's name, so an authenticated player is only replaced by a connection from
+     * the same address (a real reconnect after a dropped connection). The name is compared without
+     * case, because "sTeve" is a different UUID but looks like "Steve".
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    @SuppressWarnings("deprecation")
+    public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+        if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) return;
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            boolean sameIdentity = online.getUniqueId().equals(event.getUniqueId())
+                    || online.getName().equalsIgnoreCase(event.getName());
+            InetSocketAddress onlineSocket = online.getAddress();
+            if (sameIdentity && isForeignReplacement(restrictionManager.isAuthenticated(online.getUniqueId()),
+                    onlineSocket == null ? null : onlineSocket.getAddress(), event.getAddress())) {
+                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, configManager.getMessage(
+                        "messages.duplicate-login-denied", "&cThis player is already online."));
+                return;
+            }
+        }
+    }
+
+    static boolean isForeignReplacement(boolean onlineAuthenticated, InetAddress onlineAddress, InetAddress newAddress) {
+        return onlineAuthenticated && onlineAddress != null && !onlineAddress.equals(newAddress);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

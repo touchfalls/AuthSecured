@@ -31,6 +31,7 @@ messages:
   error: "&cSi è verificato un errore interno del server."
   only-players: "&cSolo i giocatori possono usare questo comando."
   initialization-failed: "&cAuthSecured non è inizializzato."
+  duplicate-login-denied: "&cQuesto giocatore è già online. Riconnettiti dallo stesso indirizzo o riprova più tardi."
   auth-status-authenticated: "&aStato autenticazione: autenticato."
   auth-status-required: "&cStato autenticazione: accesso richiesto."
   admin-reloaded: "&aConfigurazione e traduzioni ricaricate."

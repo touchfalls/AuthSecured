@@ -31,6 +31,7 @@ messages:
   error: "&cAn internal error occurred."
   only-players: "&cOnly players can use this command."
   initialization-failed: "&cAuthSecured is not initialized."
+  duplicate-login-denied: "&cThis player is already online. Reconnect from the same address or try again later."
   auth-status-authenticated: "&aAuthentication status: authenticated."
   auth-status-required: "&cAuthentication status: login required."
   admin-reloaded: "&aConfiguration and translations reloaded."
