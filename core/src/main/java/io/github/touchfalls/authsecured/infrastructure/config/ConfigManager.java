@@ -107,7 +107,7 @@ public final class ConfigManager {
         validateBoolean(values, "notifications.telegram.enabled");
         for (String path : List.of("session.enabled", "session.persistent", "session.verify-ip",
                 "session.extend-while-online",
-                "redis.enabled", "redis.required", "auth.online-mode.bypass-password", "auth-timeout.enabled",
+                "redis.enabled", "redis.required", "auth.online-mode.bypass-password", "auth.online-mode.trust-proxy-uuid", "auth-timeout.enabled",
                 "logging.audit.enabled", "restrictions.freeze-player", "restrictions.allow-flight",
                 "restrictions.block-chat", "restrictions.block-commands", "restrictions.block-inventory",
                 "restrictions.block-interactions", "restrictions.block-block-break",

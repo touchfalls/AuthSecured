@@ -6,6 +6,7 @@ import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
 import io.github.touchfalls.authsecured.infrastructure.security.IpHashService;
 import io.github.touchfalls.authsecured.paper.player.PlayerRestrictionManager;
 import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
+import io.github.touchfalls.authsecured.util.PremiumIdentity;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -81,7 +82,8 @@ public class PlayerConnectionListener implements Listener {
         authenticationTimeoutService.start(uuid);
 
         boolean onlineModeBypass = configManager.getBoolean("auth.online-mode.bypass-password", true);
-        if (onlineModeBypass && Bukkit.getOnlineMode()) {
+        if (onlineModeBypass && PremiumIdentity.isVerified(uuid, Bukkit.getOnlineMode(),
+                configManager.getBoolean("auth.online-mode.trust-proxy-uuid", false))) {
             restrictionManager.setPlayerAuthenticated(uuid);
             authenticationTimeoutService.clear(uuid);
             player.sendMessage(configManager.getMessage("messages.auth-bypass", "&aOnline-mode active: Automatically authenticated!"));

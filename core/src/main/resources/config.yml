@@ -109,6 +109,12 @@ auth:
     # This does not bypass passwords on an offline-mode backend.
     bypass-password: true
 
+    # Offline-mode backend behind an online-mode proxy: also skip the password for players whose
+    # forwarded UUID is a Mojang (version 4) UUID, i.e. the proxy verified them. Only enable this if the
+    # backend accepts connections from the proxy alone (firewall) and uses secure forwarding such as
+    # Velocity modern forwarding; otherwise anyone could claim a premium identity.
+    trust-proxy-uuid: false
+
 auth-timeout:
   # Kick players who do not register or log in before the deadline.
   enabled: true

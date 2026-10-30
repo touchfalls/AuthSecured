@@ -6,6 +6,7 @@ import io.github.touchfalls.authsecured.fabric.adapter.FabricLogger;
 import io.github.touchfalls.authsecured.fabric.adapter.FabricPlayerRestrictionAdapter;
 import io.github.touchfalls.authsecured.fabric.command.FabricCommandRegistration;
 import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
+import io.github.touchfalls.authsecured.util.PremiumIdentity;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -112,7 +113,9 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
 
             ConfigManager config = container.getConfigManager();
             container.getAuthenticationTimeoutService().start(uuid);
-            if (platform.isOnlineMode() && config.getBoolean("auth.online-mode.bypass-password", true)) {
+            if (config.getBoolean("auth.online-mode.bypass-password", true)
+                    && PremiumIdentity.isVerified(uuid, platform.isOnlineMode(),
+                    config.getBoolean("auth.online-mode.trust-proxy-uuid", false))) {
                 restrictionAdapter.setPlayerAuthenticated(uuid);
                 container.getAuthenticationTimeoutService().clear(uuid);
                 player.sendSystemMessage(Component.literal(config.getMessage("messages.auth-bypass",
