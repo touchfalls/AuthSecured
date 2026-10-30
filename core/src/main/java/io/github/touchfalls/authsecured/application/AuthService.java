@@ -64,7 +64,7 @@ public class AuthService {
      */
     public CompletableFuture<AuthResult> changePassword(UUID playerUuid, String username, char[] oldPassword,
                                                         char[] newPassword, byte[] ipHash) {
-        if (!passwordService.validatePolicy(newPassword)) {
+        if (!passwordService.validatePolicy(newPassword) || PasswordService.matchesUsername(newPassword, username)) {
             return CompletableFuture.completedFuture(AuthResult.VALIDATION_FAILED);
         }
         if (ipHash == null || ipHash.length == 0) {
