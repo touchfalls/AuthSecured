@@ -5,7 +5,7 @@ stable release, 26.3.
 
 ## Paper-compatible servers
 
-The single `authsecured-paper-1.2.7.jar` artifact is compiled against the
+The single `authsecured-paper-1.3.0.jar` artifact is compiled against the
 lowest supported Paper API (`1.21`) and uses only API calls retained by newer
 Paper, Purpur, Spigot, and Leaf releases.
 
