@@ -87,4 +87,68 @@ class LoginServiceSecurityTest {
             verify(accounts, never()).resetFailedAttemptsAtomic(any(), any());
         }
     }
+
+    @Test
+    void failuresWithoutAnAccountNeverCountAgainstTheNamedAccount() {
+        AccountRepository accounts = mock(AccountRepository.class);
+        PasswordService passwords = mock(PasswordService.class);
+        RateLimitService limits = mock(RateLimitService.class);
+        SecurityService security = mock(SecurityService.class);
+        UUID attackerUuid = UUID.randomUUID(); // offline UUID of "sTeve", not of the real "Steve"
+
+        when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.recordFailedLoginAttempt(anyString(), any())).thenReturn(CompletableFuture.completedFuture(null));
+        when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(attackerUuid)).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
+        doReturn(CompletableFuture.completedFuture(null)).when(passwords).verifyDummyAsync(any());
+
+        LoginService service = new LoginService(accounts, passwords, limits,
+                mock(SessionService.class), security, 5, 900);
+
+        assertEquals(AuthResult.INVALID_PASSWORD,
+                service.login(attackerUuid, "sTeve", "guess".toCharArray(), new byte[]{1}).join());
+        verify(limits, never()).recordFailedLoginAttempt(eq("steve"), any());
+        verify(limits, never()).isAccountRateLimited("steve");
+        verify(limits).recordFailedLoginAttempt("", new byte[]{1});
+    }
+
+    @Test
+    void secondLoginWhileOneIsHashingIsRejectedUntilTheFirstFinishes() {
+        AccountRepository accounts = mock(AccountRepository.class);
+        PasswordService passwords = mock(PasswordService.class);
+        RateLimitService limits = mock(RateLimitService.class);
+        SecurityService security = mock(SecurityService.class);
+        UUID uuid = UUID.randomUUID();
+        Account account = Account.createNew(uuid, "Player", "player", "hash");
+        CompletableFuture<Boolean> hashing = new CompletableFuture<>();
+
+        when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.recordFailedLoginAttempt(anyString(), any())).thenReturn(CompletableFuture.completedFuture(null));
+        when(limits.recordSuccessfulLogin(anyString())).thenReturn(CompletableFuture.completedFuture(null));
+        when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+        when(accounts.incrementFailedAttemptsAtomic(any(), anyInt(), anyLong(), any()))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(hashing);
+
+        LoginService service = new LoginService(accounts, passwords, limits,
+                mock(SessionService.class), security, 5, 900);
+
+        CompletableFuture<LoginService.CredentialCheck> first =
+                service.verifyCredentials(uuid, "Player", "a".toCharArray(), new byte[]{1});
+        assertEquals(AuthResult.RATE_LIMITED,
+                service.verifyCredentials(uuid, "Player", "b".toCharArray(), new byte[]{1}).join().result());
+        verify(passwords, times(1)).verifyPasswordAsync(any(), eq("hash"));
+
+        hashing.complete(false);
+        assertEquals(AuthResult.INVALID_PASSWORD, first.join().result());
+
+        when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(false));
+        assertEquals(AuthResult.INVALID_PASSWORD,
+                service.verifyCredentials(uuid, "Player", "c".toCharArray(), new byte[]{1}).join().result());
+    }
 }

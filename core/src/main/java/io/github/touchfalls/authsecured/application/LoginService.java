@@ -11,8 +11,10 @@ import io.github.touchfalls.authsecured.util.UsernameNormalizer;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoginService {
 
@@ -37,6 +39,7 @@ public class LoginService {
     private final long lockDurationSeconds;
     private final SecurityNotifier securityNotifier;
     private final PlatformLogger logger;
+    private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
 
     public LoginService(AccountRepository accountRepository, PasswordService passwordService,
                         RateLimitService rateLimitService, SessionService sessionService,
@@ -120,6 +123,26 @@ public class LoginService {
      */
     public CompletableFuture<CredentialCheck> verifyCredentials(UUID playerUuid, String username,
                                                                 char[] password, byte[] ipHash) {
+        if (playerUuid == null) {
+            return checkCredentials(null, username, password, ipHash);
+        }
+        // One check per player at a time: the lock and rate-limit state is read before Argon2 and
+        // written after it, so parallel guesses would all pass a stale "not locked" snapshot.
+        if (!inFlight.add(playerUuid)) {
+            return CompletableFuture.completedFuture(
+                    rejected(AuthResult.RATE_LIMITED, UsernameNormalizer.normalize(username)));
+        }
+        try {
+            return checkCredentials(playerUuid, username, password, ipHash)
+                    .whenComplete((result, error) -> inFlight.remove(playerUuid));
+        } catch (RuntimeException exception) {
+            inFlight.remove(playerUuid);
+            throw exception;
+        }
+    }
+
+    private CompletableFuture<CredentialCheck> checkCredentials(UUID playerUuid, String username,
+                                                                char[] password, byte[] ipHash) {
         if (playerUuid == null || password == null || ipHash == null || ipHash.length == 0) {
             return CompletableFuture.completedFuture(new CredentialCheck(AuthResult.INTERNAL_ERROR, null, ""));
         }
@@ -135,8 +158,10 @@ public class LoginService {
             }
             return accountRepository.findByUuid(playerUuid).thenCompose(optAccount -> {
                 Account account = optAccount.orElse(null);
-                String normalized = account != null && requestedName.isBlank()
-                        ? account.getUsernameNormalized() : requestedName;
+                // The account limit is keyed by the stored account, never by the typed name: in offline
+                // mode "sTeve" has its own UUID and no account, and must not lock the real "Steve".
+                // Without an account only the IP limit applies.
+                String normalized = account != null ? account.getUsernameNormalized() : "";
                 return rateLimitService.isAccountRateLimited(normalized).thenCompose(accountLimited -> {
                     if (accountLimited) {
                         return securityService.logLoginAttempt(account == null ? null : account.getId(),
