@@ -114,4 +114,16 @@ class AdminOperationsDoctorTest {
     private static boolean failed(List<String> lines, String text) {
         return lines.stream().anyMatch(line -> line.contains("[FAIL]") && line.contains(text));
     }
+
+    @Test
+    void sharedLocalAddressMeansAProxyWithoutIpForwarding() {
+        assertTrue(AdminOperations.playersShareOneLocalAddress(java.util.List.of("127.0.0.1", "127.0.0.1")));
+        assertTrue(AdminOperations.playersShareOneLocalAddress(java.util.List.of("10.0.0.5", "10.0.0.5", "10.0.0.5")));
+        assertTrue(AdminOperations.playersShareOneLocalAddress(java.util.List.of("fd12::1", "fd12::1")));
+        assertFalse(AdminOperations.playersShareOneLocalAddress(java.util.List.of("10.0.0.5")));
+        assertFalse(AdminOperations.playersShareOneLocalAddress(java.util.List.of("10.0.0.5", "10.0.0.6")));
+        assertFalse(AdminOperations.playersShareOneLocalAddress(java.util.List.of("203.0.113.9", "203.0.113.9")));
+        assertFalse(AdminOperations.playersShareOneLocalAddress(java.util.List.of("example.com", "example.com")));
+        assertFalse(AdminOperations.playersShareOneLocalAddress(java.util.List.of()));
+    }
 }

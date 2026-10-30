@@ -96,6 +96,8 @@ messages:
   admin-doctor-argon2-fail: "Les paramètres Argon2 sont sous le minimum OWASP (par exemple 19456 KiB avec 2 itérations). Augmentez memory-kib ou iterations dans security.password.argon2."
   admin-doctor-database-tls-ok: "Chiffrement de la connexion à la base de données"
   admin-doctor-database-tls-fail: "PostgreSQL sur un hôte distant utilise ssl-mode {mode}, qui peut transmettre des données non chiffrées. Utilisez verify-full."
+  admin-doctor-proxy-ip-ok: "Adresses IP des joueurs"
+  admin-doctor-proxy-ip-fail: "Plusieurs joueurs partagent une même adresse locale. Si un proxy se trouve devant ce serveur, activez le transfert d'IP (Velocity modern forwarding ou BungeeCord ip_forward), sinon les limites par IP et les sessions s'appliquent à tous ensemble."
   admin-doctor-alerts-ok: "Alertes de connexion"
   admin-doctor-alerts-fail: "Les alertes sont activées, mais ni Discord ni Telegram ne sont configurés"
   admin-doctor-audit-ok: "Journal d'audit"

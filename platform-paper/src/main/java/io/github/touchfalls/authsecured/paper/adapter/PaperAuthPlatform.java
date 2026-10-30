@@ -26,6 +26,16 @@ public class PaperAuthPlatform implements AuthPlatform {
     }
 
     @Override
+    public java.util.Collection<String> onlinePlayerAddresses() {
+        java.util.List<String> addresses = new java.util.ArrayList<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            java.net.InetSocketAddress socket = player.getAddress();
+            if (socket != null && socket.getAddress() != null) addresses.add(socket.getAddress().getHostAddress());
+        }
+        return addresses;
+    }
+
+    @Override
     public File getDataFolder() {
         return plugin.getDataFolder();
     }

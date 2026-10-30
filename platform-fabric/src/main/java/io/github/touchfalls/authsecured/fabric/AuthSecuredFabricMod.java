@@ -44,6 +44,7 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
     public void onInitializeServer() {
         instance = this;
         this.platform = new FabricAuthPlatform(new FabricLogger(LOGGER), restrictionAdapter);
+        this.platform.setAddressSource(playerAddresses::values);
 
         FabricCommandRegistration.register(this);
         registerLifecycleEvents();

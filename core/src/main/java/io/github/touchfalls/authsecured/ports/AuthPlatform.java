@@ -21,6 +21,12 @@ public interface AuthPlatform {
         runTaskOnMainThread(task);
     }
     boolean isOnlineMode();
+
+    /** Remote IP addresses (as text) of the players that are online now; empty when unknown. */
+    default java.util.Collection<String> onlinePlayerAddresses() {
+        return java.util.List.of();
+    }
+
     boolean isPlayerOnline(UUID playerUuid);
 
     /**
