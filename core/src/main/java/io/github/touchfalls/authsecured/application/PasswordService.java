@@ -77,6 +77,15 @@ public class PasswordService {
     public void shutdown() {
         if (!authExecutor.isShutdown()) {
             authExecutor.shutdown();
+            try {
+                // Checks already running finish their database writes before the pool closes.
+                if (!authExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    authExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                authExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }
