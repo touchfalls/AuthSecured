@@ -14,6 +14,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.player.*;
@@ -58,6 +59,14 @@ public class PlayerAuthRestrictionListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         if (isFrozen(event.getPlayer()) && BLOCKED_TELEPORT_CAUSES.contains(event.getCause().name())) {
+            event.setCancelled(true);
+        }
+    }
+
+    // PlayerPortalEvent extends PlayerTeleportEvent but has its own handler list, so the handler above never sees it.
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onPlayerPortal(PlayerPortalEvent event) {
+        if (isFrozen(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
@@ -136,6 +145,16 @@ public class PlayerAuthRestrictionListener implements Listener {
         }
     }
 
+    // Dragging fires its own event with its own handler list, so onInventoryClick does not cover it.
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getWhoClicked() instanceof Player player && !restrictionManager.isAuthenticated(player.getUniqueId())) {
+            if (configManager.getBoolean("restrictions.block-inventory", true)) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onItemDrop(PlayerDropItemEvent event) {
         if (!restrictionManager.isAuthenticated(event.getPlayer().getUniqueId())) {
@@ -155,7 +174,9 @@ public class PlayerAuthRestrictionListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    // Not ignoreCancelled: isCancelled() only reflects the block use, so an earlier plugin denying
+    // the block would otherwise leave the item in hand (pearl, bucket, food) usable.
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (!restrictionManager.isAuthenticated(event.getPlayer().getUniqueId())) {
             if (configManager.getBoolean("restrictions.block-interactions", true)) {
