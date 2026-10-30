@@ -116,6 +116,15 @@ public class TwoFactorService {
         });
     }
 
+    /**
+     * Account recovery: an administrator issued a temporary password, which can be used without a code, so the
+     * authenticator is switched off along with the old password. The player can set it up again afterwards.
+     */
+    public CompletableFuture<Void> resetForRecovery(Long accountId) {
+        return totpRepository.disable(accountId).thenCompose(v -> securityService.logSecurityEvent(
+                accountId, SecurityEventType.TWO_FACTOR_DISABLED, null, "{\"reason\":\"administrator_reset\"}"));
+    }
+
     /** The second step of login: on a valid code the login completes exactly as after a password. */
     public CompletableFuture<Outcome> verifyLogin(UUID playerUuid, String code, byte[] ipHash) {
         return withAccount(playerUuid, ipHash, (account, state) -> {

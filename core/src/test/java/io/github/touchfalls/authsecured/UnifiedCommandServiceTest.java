@@ -3,6 +3,7 @@ package io.github.touchfalls.authsecured;
 import io.github.touchfalls.authsecured.application.AuthService;
 import io.github.touchfalls.authsecured.application.AuthenticationTimeoutService;
 import io.github.touchfalls.authsecured.application.SessionService;
+import io.github.touchfalls.authsecured.application.TwoFactorService;
 import io.github.touchfalls.authsecured.application.UnifiedCommandServiceImpl;
 import io.github.touchfalls.authsecured.domain.auth.AuthResult;
 import io.github.touchfalls.authsecured.domain.auth.AuthState;
@@ -246,6 +247,51 @@ class UnifiedCommandServiceTest {
         commandExecutor.executeSessions(playerUuid, true).join();
 
         verify(authService, never()).getSessionService();
+    }
+
+    @Test
+    @DisplayName("A login with an authenticator waits for /2fa and only the right code authenticates")
+    void twoFactorLoginCompletesOnlyWithAValidCode() {
+        UUID playerUuid = UUID.randomUUID();
+        TwoFactorService twoFactor = mock(TwoFactorService.class);
+        when(authService.getTwoFactorService()).thenReturn(twoFactor);
+        Object token = new Object();
+        when(platform.currentConnectionToken(playerUuid)).thenReturn(token);
+        when(authService.login(eq(playerUuid), eq("TestPlayer"), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(AuthResult.TWO_FACTOR_REQUIRED));
+        when(twoFactor.verifyLogin(eq(playerUuid), eq("111111"), any())).thenReturn(CompletableFuture.completedFuture(
+                new TwoFactorService.Outcome(TwoFactorService.Status.INVALID_CODE, false, null, null, java.util.List.of())));
+        when(twoFactor.verifyLogin(eq(playerUuid), eq("222222"), any())).thenReturn(CompletableFuture.completedFuture(
+                new TwoFactorService.Outcome(TwoFactorService.Status.OK, false, null, null, java.util.List.of())));
+
+        // A code before the password step has nothing to complete.
+        commandExecutor.executeTwoFactor(playerUuid, "TestPlayer", new String[]{"222222"}, "127.0.0.1").join();
+        verify(twoFactor, never()).verifyLogin(any(), any(), any());
+
+        commandExecutor.executeLogin(playerUuid, "TestPlayer", "Pass123456!".toCharArray(), "127.0.0.1").join();
+        verify(restrictionAdapter, never()).setPlayerAuthenticated(playerUuid);
+
+        commandExecutor.executeTwoFactor(playerUuid, "TestPlayer", new String[]{"111111"}, "127.0.0.1").join();
+        verify(restrictionAdapter, never()).setPlayerAuthenticated(playerUuid);
+
+        commandExecutor.executeTwoFactor(playerUuid, "TestPlayer", new String[]{"222222"}, "127.0.0.1").join();
+        verify(restrictionAdapter).setPlayerAuthenticated(playerUuid);
+    }
+
+    @Test
+    @DisplayName("A code from a different connection does not complete the pending login")
+    void twoFactorCodeFromAnotherConnectionIsIgnored() {
+        UUID playerUuid = UUID.randomUUID();
+        TwoFactorService twoFactor = mock(TwoFactorService.class);
+        when(authService.getTwoFactorService()).thenReturn(twoFactor);
+        when(platform.currentConnectionToken(playerUuid)).thenReturn(new Object(), new Object(), new Object());
+        when(authService.login(eq(playerUuid), eq("TestPlayer"), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(AuthResult.TWO_FACTOR_REQUIRED));
+
+        commandExecutor.executeLogin(playerUuid, "TestPlayer", "Pass123456!".toCharArray(), "127.0.0.1").join();
+        commandExecutor.executeTwoFactor(playerUuid, "TestPlayer", new String[]{"222222"}, "127.0.0.1").join();
+
+        verify(twoFactor, never()).verifyLogin(any(), any(), any());
     }
 
     @Test

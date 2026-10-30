@@ -3,6 +3,7 @@ package io.github.touchfalls.authsecured.bootstrap;
 import io.github.touchfalls.authsecured.application.AuthService;
 import io.github.touchfalls.authsecured.application.LoginService;
 import io.github.touchfalls.authsecured.application.PasswordService;
+import io.github.touchfalls.authsecured.application.TwoFactorService;
 import io.github.touchfalls.authsecured.application.RateLimitService;
 import io.github.touchfalls.authsecured.application.RegistrationService;
 import io.github.touchfalls.authsecured.application.SecurityService;
@@ -13,6 +14,9 @@ import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
 import io.github.touchfalls.authsecured.infrastructure.database.DatabaseAuditRepository;
 import io.github.touchfalls.authsecured.infrastructure.database.DatabaseManager;
 import io.github.touchfalls.authsecured.infrastructure.database.DatabaseSessionRepository;
+import io.github.touchfalls.authsecured.infrastructure.database.DatabaseTotpRepository;
+import io.github.touchfalls.authsecured.infrastructure.security.TotpService;
+import io.github.touchfalls.authsecured.ports.TotpRepository;
 import io.github.touchfalls.authsecured.infrastructure.database.PostgresAccountRepository;
 import io.github.touchfalls.authsecured.infrastructure.database.SqliteAccountRepository;
 import io.github.touchfalls.authsecured.infrastructure.redis.MemoryRateLimitStore;
@@ -177,6 +181,13 @@ public final class DependencyContainer implements AutoCloseable {
 
         this.authService = new AuthService(registrationService, loginService, passwordService,
                 sessionService, securityService, accountRepository, logger);
+        TotpRepository totpRepository = new DatabaseTotpRepository(
+                databaseManager.getDataSource(), databaseManager.getDbExecutor(), postgres);
+        TotpService totpService = new TotpService(
+                ipHashService.deriveKey("totp-encryption"), ipHashService.deriveKey("totp-backup"));
+        loginService.enableTwoFactor(totpRepository);
+        authService.setTwoFactorService(new TwoFactorService(accountRepository, totpRepository, totpService,
+                rateLimitService, securityService, loginService, maxAccountAttempts, accountLockSeconds));
         this.commandExecutor = new UnifiedCommandServiceImpl(authService, platform,
                 configManager.getLocalizationManager(), ipHashService, authenticationTimeoutService);
     }

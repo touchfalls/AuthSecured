@@ -114,8 +114,13 @@ public final class FabricCommandRegistration {
                     executor(mod).executeSessions(player.getUUID(), true);
                     return 1;
                 })));
+        dispatcher.register(Commands.literal("2fa")
+                .executes(context -> twoFactor(mod, context.getSource().getPlayerOrException(), ""))
+                .then(Commands.argument("arguments", StringArgumentType.greedyString()).executes(context ->
+                        twoFactor(mod, context.getSource().getPlayerOrException(),
+                                StringArgumentType.getString(context, "arguments")))));
         Set<String> registeredPasswordNames = new HashSet<>();
-        for (String canonical : List.of("login", "register", "changepassword")) {
+        for (String canonical : List.of("login", "register", "changepassword", "2fa")) {
             var node = dispatcher.getRoot().getChild(canonical);
             if (node == null) continue;
             registeredPasswordNames.add(canonical);
@@ -124,6 +129,14 @@ public final class FabricCommandRegistration {
                     .forEach(candidate -> registeredPasswordNames.add(candidate.getName()));
         }
         SecretRedactor.registerPasswordAliases(registeredPasswordNames);
+    }
+
+    private static int twoFactor(AuthSecuredFabricMod mod, ServerPlayer player, String arguments) {
+        if (!ready(mod, player)) return 0;
+        String[] args = arguments.isBlank() ? new String[0] : arguments.strip().split("\\s+");
+        executor(mod).executeTwoFactor(player.getUUID(), player.getName().getString(), args,
+                mod.getPlayerAddress(player.getUUID()));
+        return 1;
     }
 
     private static void registerAdminCommands(CommandDispatcher<CommandSourceStack> dispatcher,

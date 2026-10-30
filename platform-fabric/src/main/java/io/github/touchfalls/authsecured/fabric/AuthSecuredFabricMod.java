@@ -255,8 +255,8 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
         }
         String normalized = command.startsWith("/") ? command : "/" + command;
         normalized = normalized.strip().toLowerCase(Locale.ROOT).split("\\s+", 2)[0];
-        List<String> defaults = List.of("/login", "/l", "/register", "/reg", "/changepassword", "/cp");
-        return container.getConfigManager().getStringList("restrictions.allowed-commands", defaults)
+        List<String> defaults = List.of("/login", "/l", "/register", "/reg", "/changepassword", "/cp", "/2fa");
+        return container.getConfigManager().getAllowedCommands(defaults)
                 .stream()
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .anyMatch(normalized::equals);

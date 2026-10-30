@@ -27,8 +27,8 @@ import java.util.Map;
 public final class PaperSensitiveCommandListener implements Listener {
 
     private static final List<String> DEFAULT_ALLOWED = List.of(
-            "/login", "/l", "/register", "/reg", "/changepassword", "/cp");
-    private static final List<String> PASSWORD_COMMANDS = List.of("login", "register", "changepassword");
+            "/login", "/l", "/register", "/reg", "/changepassword", "/cp", "/2fa");
+    private static final List<String> PASSWORD_COMMANDS = List.of("login", "register", "changepassword", "2fa");
 
     private final JavaPlugin plugin;
     private final PlayerRestrictionManager restrictionManager;
@@ -103,7 +103,7 @@ public final class PaperSensitiveCommandListener implements Listener {
                 || !configManager.getBoolean("restrictions.block-commands", true)) {
             return true;
         }
-        return isAllowed(label, configManager.getStringList("restrictions.allowed-commands", DEFAULT_ALLOWED));
+        return isAllowed(label, configManager.getAllowedCommands(DEFAULT_ALLOWED));
     }
 
     static boolean isAllowed(String label, List<String> allowedCommands) {

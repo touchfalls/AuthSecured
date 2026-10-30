@@ -151,6 +151,7 @@ restrictions:
     - "/reg"
     - "/changepassword"
     - "/cp"
+    - "/2fa"
 
   block-inventory: true        # Block opening and clicking inventories
   block-interactions: true     # Block block, item and entity interactions

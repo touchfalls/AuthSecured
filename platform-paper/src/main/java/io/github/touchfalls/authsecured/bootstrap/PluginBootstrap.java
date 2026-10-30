@@ -151,12 +151,13 @@ public class PluginBootstrap {
         registerCmd("logout", new LogoutCommand(container.getCommandExecutor(), container.getConfigManager()));
         registerCmd("authstatus", new AuthStatusCommand(container.getCommandExecutor(), container.getConfigManager()));
         registerCmd("sessions", new SessionsCommand(container.getCommandExecutor(), container.getConfigManager()));
+        registerCmd("2fa", new TwoFactorCommand(container.getCommandExecutor(), container.getConfigManager()));
         java.util.Map<String, String> declaredLabels = PaperSensitiveCommandListener.declaredPasswordLabels(
                 plugin.getDescription().getCommands());
         // Declared aliases stay password commands even when another plugin registered them first
         // (Bukkit then drops them from the active aliases): players still type them with a password.
         java.util.Set<String> passwordAliases = new java.util.HashSet<>(declaredLabels.keySet());
-        for (String commandName : java.util.List.of("login", "register", "changepassword")) {
+        for (String commandName : java.util.List.of("login", "register", "changepassword", "2fa")) {
             PluginCommand command = plugin.getCommand(commandName);
             if (command != null) passwordAliases.addAll(command.getAliases());
         }

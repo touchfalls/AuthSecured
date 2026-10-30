@@ -152,6 +152,15 @@ class TwoFactorServiceTest {
     }
 
     @Test
+    void anAdministratorResetSwitchesTheAuthenticatorOff() {
+        enable();
+
+        service.resetForRecovery(0L).join();
+
+        assertFalse(service.isEnabled(uuid).join());
+    }
+
+    @Test
     void limitsAndLocksStopTheCheckBeforeAnyCodeIsTried() {
         enable();
         when(limits.isAccountRateLimited("player")).thenReturn(CompletableFuture.completedFuture(true));
