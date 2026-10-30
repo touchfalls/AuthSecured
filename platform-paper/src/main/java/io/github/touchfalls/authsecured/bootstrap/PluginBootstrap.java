@@ -150,6 +150,7 @@ public class PluginBootstrap {
         }
         registerCmd("logout", new LogoutCommand(container.getCommandExecutor(), container.getConfigManager()));
         registerCmd("authstatus", new AuthStatusCommand(container.getCommandExecutor(), container.getConfigManager()));
+        registerCmd("sessions", new SessionsCommand(container.getCommandExecutor(), container.getConfigManager()));
         java.util.Map<String, String> declaredLabels = PaperSensitiveCommandListener.declaredPasswordLabels(
                 plugin.getDescription().getCommands());
         // Declared aliases stay password commands even when another plugin registered them first

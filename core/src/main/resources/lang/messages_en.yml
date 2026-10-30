@@ -34,6 +34,8 @@ messages:
   duplicate-login-denied: "&cThis player is already online. Reconnect from the same address or try again later."
   auth-status-authenticated: "&aAuthentication status: authenticated."
   auth-status-required: "&cAuthentication status: login required."
+  sessions-count: "&eActive saved sessions: &f{count}"
+  sessions-revoked: "&aAll saved sessions were ended. You stay logged in on this connection."
   admin-reloaded: "&aConfiguration and translations reloaded."
   admin-reload-failed: "&cReload rejected. The previous valid configuration is still active."
   admin-session-usage: "&cUsage: /authadmin session <gettimeout|settimeout <seconds>>"

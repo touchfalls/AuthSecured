@@ -206,6 +206,31 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
     }
 
     @Override
+    public CompletableFuture<Void> executeSessions(UUID playerUuid, boolean revoke) {
+        if (!platform.getRestrictionAdapter().isAuthenticated(playerUuid)) {
+            platform.runTaskForPlayer(playerUuid, () -> platform.sendMessage(playerUuid,
+                    localizationManager.getMessage("messages.must-auth", "&cYou are not authenticated!")));
+            return CompletableFuture.completedFuture(null);
+        }
+        SessionService sessions = authService.getSessionService();
+        CompletableFuture<String> message = revoke
+                ? sessions.revokeActiveSessionForPlayer(playerUuid)
+                        .thenApply(ignored -> localizationManager.getMessage("messages.sessions-revoked",
+                                "&aAll saved sessions were ended. You stay logged in on this connection."))
+                : sessions.countActiveSessions(playerUuid)
+                        .thenApply(count -> localizationManager.getMessage("messages.sessions-count",
+                                "&eActive saved sessions: &f{count}",
+                                Map.of("count", String.valueOf(count))));
+        return message
+                .exceptionally(throwable -> {
+                    logFailure("Sessions command", throwable);
+                    return localizationManager.getMessage("messages.error");
+                })
+                .thenAccept(text -> platform.runTaskForPlayer(playerUuid,
+                        () -> platform.sendMessage(playerUuid, text)));
+    }
+
+    @Override
     public void executeAuthStatus(UUID playerUuid) {
         AuthState state = platform.getRestrictionAdapter().getAuthState(playerUuid);
         String message = state == AuthState.AUTHENTICATED

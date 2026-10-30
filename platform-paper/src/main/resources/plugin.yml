@@ -25,6 +25,9 @@ commands:
   authstatus:
     description: Check authentication status.
     usage: /authstatus
+  sessions:
+    description: Show or end your saved login sessions.
+    usage: /sessions [revoke]
   authadmin:
     description: Admin authentication operations.
     usage: /authadmin <status|doctor|reload|session|audit|unlock|unregister|resetpassword>

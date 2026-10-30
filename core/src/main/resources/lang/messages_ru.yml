@@ -34,6 +34,8 @@ messages:
   duplicate-login-denied: "&cЭтот игрок уже на сервере. Подключитесь с того же адреса или попробуйте позже."
   auth-status-authenticated: "&aСтатус авторизации: вы авторизованы."
   auth-status-required: "&cСтатус авторизации: требуется вход."
+  sessions-count: "&eАктивных сохранённых сессий: &f{count}"
+  sessions-revoked: "&aВсе сохранённые сессии завершены. Вы остаётесь в системе на этом подключении."
   admin-reloaded: "&aКонфигурация и переводы перезагружены."
   admin-reload-failed: "&cПерезагрузка отклонена. Предыдущая рабочая конфигурация остается активной."
   admin-session-usage: "&cИспользование: /authadmin session <gettimeout|settimeout <секунды>>"

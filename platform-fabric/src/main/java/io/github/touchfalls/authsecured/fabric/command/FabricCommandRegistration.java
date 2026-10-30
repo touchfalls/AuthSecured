@@ -101,6 +101,19 @@ public final class FabricCommandRegistration {
             executor(mod).executeAuthStatus(player.getUUID());
             return 1;
         }));
+        dispatcher.register(Commands.literal("sessions")
+                .executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayerOrException();
+                    if (!ready(mod, player)) return 0;
+                    executor(mod).executeSessions(player.getUUID(), false);
+                    return 1;
+                })
+                .then(Commands.literal("revoke").executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayerOrException();
+                    if (!ready(mod, player)) return 0;
+                    executor(mod).executeSessions(player.getUUID(), true);
+                    return 1;
+                })));
         Set<String> registeredPasswordNames = new HashSet<>();
         for (String canonical : List.of("login", "register", "changepassword")) {
             var node = dispatcher.getRoot().getChild(canonical);

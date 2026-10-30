@@ -34,6 +34,8 @@ messages:
   duplicate-login-denied: "&cCe joueur est déjà connecté. Reconnectez-vous depuis la même adresse ou réessayez plus tard."
   auth-status-authenticated: "&aÉtat de l'authentification : authentifié."
   auth-status-required: "&cÉtat de l'authentification : connexion requise."
+  sessions-count: "&eSessions enregistrées actives : &f{count}"
+  sessions-revoked: "&aToutes les sessions enregistrées ont été terminées. Vous restez connecté sur cette connexion."
   admin-reloaded: "&aConfiguration et traductions rechargées."
   admin-reload-failed: "&cRechargement refusé. La configuration valide précédente reste active."
   admin-session-usage: "&cUtilisation : /authadmin session <gettimeout|settimeout <secondes>>"

@@ -12,6 +12,8 @@ public interface SessionRepository {
     CompletableFuture<Void> save(Session session);
     CompletableFuture<Optional<Session>> findById(UUID sessionId);
     CompletableFuture<Optional<Session>> findActiveByPlayerUuid(UUID playerUuid);
+    /** Number of still-valid sessions of the account behind this player, across all servers. */
+    CompletableFuture<Integer> countActiveByPlayerUuid(UUID playerUuid);
     CompletableFuture<Void> revoke(UUID sessionId);
     CompletableFuture<Void> revokeAllForAccount(Long accountId);
 

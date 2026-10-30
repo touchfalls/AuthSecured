@@ -221,6 +221,34 @@ class UnifiedCommandServiceTest {
     }
 
     @Test
+    @DisplayName("Sessions command shows the count, revoke ends sessions but keeps the player logged in")
+    void sessionsShowsCountAndRevokeKeepsTheConnectionAuthenticated() {
+        UUID playerUuid = UUID.randomUUID();
+        SessionService sessionService = mock(SessionService.class);
+        when(authService.getSessionService()).thenReturn(sessionService);
+        when(restrictionAdapter.isAuthenticated(playerUuid)).thenReturn(true);
+        when(sessionService.countActiveSessions(playerUuid)).thenReturn(CompletableFuture.completedFuture(3));
+        when(sessionService.revokeActiveSessionForPlayer(playerUuid)).thenReturn(CompletableFuture.completedFuture(null));
+
+        commandExecutor.executeSessions(playerUuid, false).join();
+        verify(platform).sendMessage(eq(playerUuid), contains("3"));
+
+        commandExecutor.executeSessions(playerUuid, true).join();
+        verify(sessionService).revokeActiveSessionForPlayer(playerUuid);
+        verify(restrictionAdapter, never()).setPlayerUnauthenticated(any(), any());
+    }
+
+    @Test
+    @DisplayName("Sessions command requires authentication")
+    void sessionsRequiresAuthentication() {
+        UUID playerUuid = UUID.randomUUID();
+
+        commandExecutor.executeSessions(playerUuid, true).join();
+
+        verify(authService, never()).getSessionService();
+    }
+
+    @Test
     @DisplayName("Player state changes run on the thread that owns that player")
     void playerStateChangesAreScheduledForThatPlayer() {
         UUID playerUuid = UUID.randomUUID();

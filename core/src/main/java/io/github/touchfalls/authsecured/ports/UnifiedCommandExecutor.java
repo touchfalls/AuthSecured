@@ -16,6 +16,12 @@ public interface UnifiedCommandExecutor {
     void executeAuthStatus(UUID playerUuid);
 
     /**
+     * {@code /sessions}: tells an authenticated player how many saved sessions their account has;
+     * with {@code revoke} it ends all of them but keeps this connection logged in.
+     */
+    CompletableFuture<Void> executeSessions(UUID playerUuid, boolean revoke);
+
+    /**
      * Returns an online player to the pre-login state after an administrator invalidated
      * their credentials, so a connection that authenticated earlier cannot outlive them.
      * Does nothing if the player is offline.
