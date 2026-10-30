@@ -106,7 +106,7 @@ public final class DatabaseManager {
             } else {
                 try (Connection conn = dataSource.getConnection()) {
                     migrateSqlite(conn);
-                    logger.info("SQLite database schema is at version 4.");
+                    logger.info("SQLite database schema is at version 5.");
                 }
             }
         } catch (Exception e) {
@@ -150,7 +150,19 @@ public final class DatabaseManager {
                     }
                 }
                 setSchemaVersion(connection, 4);
-            } else if (version > 4) {
+                version = 4;
+            }
+            if (version == 4) {
+                for (String column : new String[]{"totp_secret BLOB NULL", "totp_enabled INTEGER NOT NULL DEFAULT 0",
+                        "totp_last_step INTEGER NOT NULL DEFAULT 0", "totp_backup_codes TEXT NULL"}) {
+                    if (!hasColumn(connection, "accounts", column.substring(0, column.indexOf(' ')))) {
+                        try (Statement statement = connection.createStatement()) {
+                            statement.execute("ALTER TABLE accounts ADD COLUMN " + column);
+                        }
+                    }
+                }
+                setSchemaVersion(connection, 5);
+            } else if (version > 5) {
                 throw new IllegalStateException("SQLite schema is newer than this AuthSecured version");
             }
             connection.commit();

@@ -246,7 +246,7 @@ class SqliteAccountRepositoryTest {
             try (Statement statement = connection.createStatement();
                  ResultSet version = statement.executeQuery("SELECT version FROM authsecured_schema_version")) {
                 assertTrue(version.next());
-                assertEquals(4, version.getInt(1));
+                assertEquals(5, version.getInt(1));
             }
             try (Statement statement = connection.createStatement();
                  ResultSet table = statement.executeQuery(
