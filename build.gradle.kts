@@ -20,7 +20,6 @@ allprojects {
                 includeGroup("net.md-5")
             }
         }
-        maven("https://oss.sonatype.org/content/groups/public/")
     }
 }
 
