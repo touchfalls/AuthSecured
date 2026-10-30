@@ -103,10 +103,15 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                     // A disconnect-and-reconnect under the same UUID while this was hashing must
                     // not authenticate the new connection with the old one's result (audit #6).
                     if (!Objects.equals(connectionToken, platform.currentConnectionToken(playerUuid))) return;
-                    if (result == AuthResult.SUCCESS) {
+                    if (result == AuthResult.SUCCESS || result == AuthResult.SUCCESS_NEW_ADDRESS) {
                         platform.getRestrictionAdapter().setPlayerAuthenticated(playerUuid);
                         clearAuthenticationTimeout(playerUuid);
                         platform.sendMessage(playerUuid, localizationManager.getMessage("messages.login-success"));
+                        if (result == AuthResult.SUCCESS_NEW_ADDRESS) {
+                            platform.sendMessage(playerUuid, localizationManager.getMessage("messages.login-new-address",
+                                    "&eYou logged in from a different address than last time. "
+                                            + "If this was not you, change your password."));
+                        }
                     } else {
                         if (result == AuthResult.PASSWORD_CHANGE_REQUIRED) {
                             platform.getRestrictionAdapter().setPasswordChangeRequired(playerUuid);

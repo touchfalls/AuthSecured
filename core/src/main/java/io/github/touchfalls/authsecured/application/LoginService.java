@@ -9,6 +9,7 @@ import io.github.touchfalls.authsecured.ports.PlatformLogger;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
 import io.github.touchfalls.authsecured.util.UsernameNormalizer;
 
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Set;
@@ -96,9 +97,10 @@ public class LoginService {
                                     account.getId(), playerUuid, ipHash, "default-server"))
                             .thenCompose(session -> securityService.logLoginAttempt(account.getId(), ipHash, true, "SUCCESS"))
                             .thenCompose(v -> securityService.logSecurityEvent(account.getId(), SecurityEventType.LOGIN_SUCCESS, ipHash, "{}"))
-                            .thenApply(v -> {
+                            .thenCompose(v -> notePreviousAddress(account, ipHash))
+                            .thenApply(newAddress -> {
                                 upgradeHashIfOutdated(account, password);
-                                return AuthResult.SUCCESS;
+                                return newAddress ? AuthResult.SUCCESS_NEW_ADDRESS : AuthResult.SUCCESS;
                             });
                 }).exceptionally(ex -> {
                     if (logger != null) logger.severe("Login failed internally ("
@@ -184,6 +186,23 @@ public class LoginService {
                 });
             });
         });
+    }
+
+    /**
+     * Records this login's address and reports whether it differs from the previous one. A failure
+     * here only loses the notice; it must not fail a login that already succeeded.
+     */
+    private CompletableFuture<Boolean> notePreviousAddress(Account account, byte[] ipHash) {
+        return accountRepository.exchangeLastLoginIpHash(account.getId(), ipHash)
+                .thenCompose(previous -> {
+                    if (previous.isEmpty() || MessageDigest.isEqual(previous.get(), ipHash)) {
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return securityService.logSecurityEvent(
+                                    account.getId(), SecurityEventType.LOGIN_NEW_ADDRESS, ipHash, "{}")
+                            .thenApply(v -> true);
+                })
+                .exceptionally(error -> false);
     }
 
     private CompletableFuture<CredentialCheck> evaluate(Account account, boolean valid, String normalized,

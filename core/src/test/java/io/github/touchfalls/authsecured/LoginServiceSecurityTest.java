@@ -151,4 +151,38 @@ class LoginServiceSecurityTest {
         assertEquals(AuthResult.INVALID_PASSWORD,
                 service.verifyCredentials(uuid, "Player", "c".toCharArray(), new byte[]{1}).join().result());
     }
+
+    @Test
+    void loginFromADifferentAddressThanLastTimeIsReported() {
+        for (byte[] previous : new byte[][]{new byte[]{9}, new byte[]{1}, null}) {
+            AccountRepository accounts = mock(AccountRepository.class);
+            PasswordService passwords = mock(PasswordService.class);
+            RateLimitService limits = mock(RateLimitService.class);
+            SecurityService security = mock(SecurityService.class);
+            SessionService sessions = mock(SessionService.class);
+            UUID uuid = UUID.randomUUID();
+            Account account = Account.createNew(uuid, "Player", "player", "hash");
+
+            when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+            when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+            when(limits.recordSuccessfulLogin(anyString())).thenReturn(CompletableFuture.completedFuture(null));
+            when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                    .thenReturn(CompletableFuture.completedFuture(null));
+            when(security.logSecurityEvent(any(), any(), any(), anyString()))
+                    .thenReturn(CompletableFuture.completedFuture(null));
+            when(sessions.createSession(any(), any(), any(), anyString())).thenReturn(CompletableFuture.completedFuture(
+                    io.github.touchfalls.authsecured.domain.session.Session.create(1L, uuid, "s", 60)));
+            when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+            when(accounts.resetFailedAttemptsAtomic(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
+            when(accounts.exchangeLastLoginIpHash(any(), any()))
+                    .thenReturn(CompletableFuture.completedFuture(Optional.ofNullable(previous)));
+            when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(true));
+
+            LoginService service = new LoginService(accounts, passwords, limits, sessions, security, 5, 900);
+
+            AuthResult expected = previous != null && previous[0] == 9
+                    ? AuthResult.SUCCESS_NEW_ADDRESS : AuthResult.SUCCESS;
+            assertEquals(expected, service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join());
+        }
+    }
 }

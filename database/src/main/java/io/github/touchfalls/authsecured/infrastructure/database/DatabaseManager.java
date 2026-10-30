@@ -106,7 +106,7 @@ public final class DatabaseManager {
             } else {
                 try (Connection conn = dataSource.getConnection()) {
                     migrateSqlite(conn);
-                    logger.info("SQLite database schema is at version 3.");
+                    logger.info("SQLite database schema is at version 4.");
                 }
             }
         } catch (Exception e) {
@@ -141,7 +141,16 @@ public final class DatabaseManager {
             if (version == 2) {
                 applyRegistrationIpHashColumnSqlite(connection);
                 setSchemaVersion(connection, 3);
-            } else if (version > 3) {
+                version = 3;
+            }
+            if (version == 3) {
+                if (!hasColumn(connection, "accounts", "last_login_ip_hash")) {
+                    try (Statement statement = connection.createStatement()) {
+                        statement.execute("ALTER TABLE accounts ADD COLUMN last_login_ip_hash BLOB NULL");
+                    }
+                }
+                setSchemaVersion(connection, 4);
+            } else if (version > 4) {
                 throw new IllegalStateException("SQLite schema is newer than this AuthSecured version");
             }
             connection.commit();
