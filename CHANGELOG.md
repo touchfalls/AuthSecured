@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-10-30
+
+### Added
+- Two-factor authentication (TOTP): `/2fa enable|confirm|disable|status`, 8 backup codes, replay
+  protection. Wrong codes count like wrong passwords. Secrets are stored encrypted. An administrator
+  password reset switches it off. Paper and Fabric.
+- `/sessions` shows how many saved sessions you have; `/sessions revoke` ends them and keeps you online.
+- Notice when you log in from a different address than last time (audit event `LOGIN_NEW_ADDRESS`).
+- `auth.online-mode.trust-proxy-uuid` (default `false`): an offline-mode backend behind an
+  online-mode proxy skips the password for forwarded Mojang UUIDs.
+- `/authadmin doctor` warns about PostgreSQL `ssl-mode: prefer` on remote hosts and about several
+  players sharing one local address (a proxy without IP forwarding).
+- Common passwords (bundled list) and a password equal to the player name are rejected.
+
+### Security
+- Paper: portals, inventory drag, armor stands, entity interaction and item use after a cancelled
+  block use are now blocked before login.
+- Fabric: if AuthSecured fails to initialize, joining players are kicked instead of staying frozen.
+- The account rate limit is keyed by the stored account, so `sTeve` can no longer lock `Steve`.
+- Only one password check per player at a time, so parallel `/login` commands cannot bypass the lockout.
+- Paper: an authenticated player is only replaced by a connection from the same address.
+- SQLite uses WAL and a 5 second busy timeout instead of failing with "database is locked".
+- GitHub Actions are pinned by commit SHA; Gradle wrapper checksum; CodeQL workflow.
+
+### Changed
+- The default minimum password length is now 8 (was 10). Still configurable, minimum allowed is 8.
+  Applies after a restart. Existing passwords are not affected.
+- Database schema 5 (SQLite) / V5 (PostgreSQL): adds `last_login_ip_hash` and the two-factor columns.
+  Back up the database first; an older jar will not start on it.
+- `/2fa` is always allowed before login, even if missing from `restrictions.allowed-commands`.
+
+### Fixed
+- Shutdown waits up to 5 seconds for running password checks before the database closes.
+
 ## [1.2.7] - 2026-10-26
 
 ### Added
