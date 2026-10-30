@@ -65,6 +65,10 @@ public final class DatabaseManager {
             config.setJdbcUrl("jdbc:sqlite:" + sqlitePath);
             config.setDriverClassName("org.sqlite.JDBC");
             config.setConnectionInitSql("PRAGMA foreign_keys = ON");
+            // The pool has several connections: WAL lets readers run beside a writer, and the timeout
+            // makes a second writer wait instead of failing at once with "database is locked".
+            config.addDataSourceProperty("journal_mode", "WAL");
+            config.addDataSourceProperty("busy_timeout", "5000");
             config.setConnectionTestQuery("SELECT 1");
         }
 
@@ -102,7 +106,7 @@ public final class DatabaseManager {
             } else {
                 try (Connection conn = dataSource.getConnection()) {
                     migrateSqlite(conn);
-                    logger.info("SQLite database schema is at version 3.");
+                    logger.info("SQLite database schema is at version 5.");
                 }
             }
         } catch (Exception e) {
@@ -137,7 +141,28 @@ public final class DatabaseManager {
             if (version == 2) {
                 applyRegistrationIpHashColumnSqlite(connection);
                 setSchemaVersion(connection, 3);
-            } else if (version > 3) {
+                version = 3;
+            }
+            if (version == 3) {
+                if (!hasColumn(connection, "accounts", "last_login_ip_hash")) {
+                    try (Statement statement = connection.createStatement()) {
+                        statement.execute("ALTER TABLE accounts ADD COLUMN last_login_ip_hash BLOB NULL");
+                    }
+                }
+                setSchemaVersion(connection, 4);
+                version = 4;
+            }
+            if (version == 4) {
+                for (String column : new String[]{"totp_secret BLOB NULL", "totp_enabled INTEGER NOT NULL DEFAULT 0",
+                        "totp_last_step INTEGER NOT NULL DEFAULT 0", "totp_backup_codes TEXT NULL"}) {
+                    if (!hasColumn(connection, "accounts", column.substring(0, column.indexOf(' ')))) {
+                        try (Statement statement = connection.createStatement()) {
+                            statement.execute("ALTER TABLE accounts ADD COLUMN " + column);
+                        }
+                    }
+                }
+                setSchemaVersion(connection, 5);
+            } else if (version > 5) {
                 throw new IllegalStateException("SQLite schema is newer than this AuthSecured version");
             }
             connection.commit();

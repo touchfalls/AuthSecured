@@ -72,7 +72,7 @@ public final class ConfigManager {
         }
         validateInteger(values, "security.password.min-length", 8, 128);
         validateInteger(values, "security.password.max-length", 8, 1024);
-        int minimum = valueAsInt(values, "security.password.min-length", 10);
+        int minimum = valueAsInt(values, "security.password.min-length", 8);
         int maximum = valueAsInt(values, "security.password.max-length", 128);
         if (minimum > maximum) throw new IllegalArgumentException("password length range is invalid");
         validateInteger(values, "session.timeout-seconds", 1, 2_592_000);
@@ -107,7 +107,7 @@ public final class ConfigManager {
         validateBoolean(values, "notifications.telegram.enabled");
         for (String path : List.of("session.enabled", "session.persistent", "session.verify-ip",
                 "session.extend-while-online",
-                "redis.enabled", "redis.required", "auth.online-mode.bypass-password", "auth-timeout.enabled",
+                "redis.enabled", "redis.required", "auth.online-mode.bypass-password", "auth.online-mode.trust-proxy-uuid", "auth-timeout.enabled",
                 "logging.audit.enabled", "restrictions.freeze-player", "restrictions.allow-flight",
                 "restrictions.block-chat", "restrictions.block-commands", "restrictions.block-inventory",
                 "restrictions.block-interactions", "restrictions.block-block-break",
@@ -279,6 +279,18 @@ public final class ConfigManager {
             return list.stream().map(String.class::cast).toList();
         }
         return defaultValue;
+    }
+
+    /**
+     * The commands a player may run before login. {@code /2fa} is always included: a list saved by an older
+     * version does not have it, and without it a player with an authenticator could never finish logging in.
+     */
+    public List<String> getAllowedCommands(List<String> defaultValue) {
+        List<String> configured = getStringList("restrictions.allowed-commands", defaultValue);
+        if (configured.stream().anyMatch("/2fa"::equalsIgnoreCase)) return configured;
+        List<String> withTwoFactor = new java.util.ArrayList<>(configured);
+        withTwoFactor.add("/2fa");
+        return withTwoFactor;
     }
 
     public String getMessage(String path, String defaultValue) {

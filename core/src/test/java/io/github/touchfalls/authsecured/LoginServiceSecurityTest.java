@@ -87,4 +87,136 @@ class LoginServiceSecurityTest {
             verify(accounts, never()).resetFailedAttemptsAtomic(any(), any());
         }
     }
+
+    @Test
+    void failuresWithoutAnAccountNeverCountAgainstTheNamedAccount() {
+        AccountRepository accounts = mock(AccountRepository.class);
+        PasswordService passwords = mock(PasswordService.class);
+        RateLimitService limits = mock(RateLimitService.class);
+        SecurityService security = mock(SecurityService.class);
+        UUID attackerUuid = UUID.randomUUID(); // offline UUID of "sTeve", not of the real "Steve"
+
+        when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.recordFailedLoginAttempt(anyString(), any())).thenReturn(CompletableFuture.completedFuture(null));
+        when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(attackerUuid)).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
+        doReturn(CompletableFuture.completedFuture(null)).when(passwords).verifyDummyAsync(any());
+
+        LoginService service = new LoginService(accounts, passwords, limits,
+                mock(SessionService.class), security, 5, 900);
+
+        assertEquals(AuthResult.INVALID_PASSWORD,
+                service.login(attackerUuid, "sTeve", "guess".toCharArray(), new byte[]{1}).join());
+        verify(limits, never()).recordFailedLoginAttempt(eq("steve"), any());
+        verify(limits, never()).isAccountRateLimited("steve");
+        verify(limits).recordFailedLoginAttempt("", new byte[]{1});
+    }
+
+    @Test
+    void secondLoginWhileOneIsHashingIsRejectedUntilTheFirstFinishes() {
+        AccountRepository accounts = mock(AccountRepository.class);
+        PasswordService passwords = mock(PasswordService.class);
+        RateLimitService limits = mock(RateLimitService.class);
+        SecurityService security = mock(SecurityService.class);
+        UUID uuid = UUID.randomUUID();
+        Account account = Account.createNew(uuid, "Player", "player", "hash");
+        CompletableFuture<Boolean> hashing = new CompletableFuture<>();
+
+        when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.recordFailedLoginAttempt(anyString(), any())).thenReturn(CompletableFuture.completedFuture(null));
+        when(limits.recordSuccessfulLogin(anyString())).thenReturn(CompletableFuture.completedFuture(null));
+        when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+        when(accounts.incrementFailedAttemptsAtomic(any(), anyInt(), anyLong(), any()))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(hashing);
+
+        LoginService service = new LoginService(accounts, passwords, limits,
+                mock(SessionService.class), security, 5, 900);
+
+        CompletableFuture<LoginService.CredentialCheck> first =
+                service.verifyCredentials(uuid, "Player", "a".toCharArray(), new byte[]{1});
+        assertEquals(AuthResult.RATE_LIMITED,
+                service.verifyCredentials(uuid, "Player", "b".toCharArray(), new byte[]{1}).join().result());
+        verify(passwords, times(1)).verifyPasswordAsync(any(), eq("hash"));
+
+        hashing.complete(false);
+        assertEquals(AuthResult.INVALID_PASSWORD, first.join().result());
+
+        when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(false));
+        assertEquals(AuthResult.INVALID_PASSWORD,
+                service.verifyCredentials(uuid, "Player", "c".toCharArray(), new byte[]{1}).join().result());
+    }
+
+    @Test
+    void loginFromADifferentAddressThanLastTimeIsReported() {
+        for (byte[] previous : new byte[][]{new byte[]{9}, new byte[]{1}, null}) {
+            AccountRepository accounts = mock(AccountRepository.class);
+            PasswordService passwords = mock(PasswordService.class);
+            RateLimitService limits = mock(RateLimitService.class);
+            SecurityService security = mock(SecurityService.class);
+            SessionService sessions = mock(SessionService.class);
+            UUID uuid = UUID.randomUUID();
+            Account account = Account.createNew(uuid, "Player", "player", "hash");
+
+            when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+            when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+            when(limits.recordSuccessfulLogin(anyString())).thenReturn(CompletableFuture.completedFuture(null));
+            when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                    .thenReturn(CompletableFuture.completedFuture(null));
+            when(security.logSecurityEvent(any(), any(), any(), anyString()))
+                    .thenReturn(CompletableFuture.completedFuture(null));
+            when(sessions.createSession(any(), any(), any(), anyString())).thenReturn(CompletableFuture.completedFuture(
+                    io.github.touchfalls.authsecured.domain.session.Session.create(1L, uuid, "s", 60)));
+            when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+            when(accounts.resetFailedAttemptsAtomic(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
+            when(accounts.exchangeLastLoginIpHash(any(), any()))
+                    .thenReturn(CompletableFuture.completedFuture(Optional.ofNullable(previous)));
+            when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(true));
+
+            LoginService service = new LoginService(accounts, passwords, limits, sessions, security, 5, 900);
+
+            AuthResult expected = previous != null && previous[0] == 9
+                    ? AuthResult.SUCCESS_NEW_ADDRESS : AuthResult.SUCCESS;
+            assertEquals(expected, service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join());
+        }
+    }
+
+    @Test
+    void passwordAloneDoesNotLogInAnAccountWithAnAuthenticator() {
+        AccountRepository accounts = mock(AccountRepository.class);
+        PasswordService passwords = mock(PasswordService.class);
+        RateLimitService limits = mock(RateLimitService.class);
+        SecurityService security = mock(SecurityService.class);
+        SessionService sessions = mock(SessionService.class);
+        io.github.touchfalls.authsecured.ports.TotpRepository totp = mock(io.github.touchfalls.authsecured.ports.TotpRepository.class);
+        UUID uuid = UUID.randomUUID();
+        Account account = Account.createNew(uuid, "Player", "player", "hash");
+
+        when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+        when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+        when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+        when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(true));
+        when(totp.find(any())).thenReturn(CompletableFuture.completedFuture(Optional.of(
+                new io.github.touchfalls.authsecured.ports.TotpRepository.State(new byte[]{1}, true, 0, java.util.List.of()))));
+
+        LoginService service = new LoginService(accounts, passwords, limits, sessions, security, 5, 900);
+        service.enableTwoFactor(totp);
+
+        assertEquals(AuthResult.TWO_FACTOR_REQUIRED,
+                service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join());
+        verify(sessions, never()).createSession(any(), any(), any(), anyString());
+        verify(accounts, never()).resetFailedAttemptsAtomic(any(), any());
+
+        when(totp.find(any())).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("db down")));
+        assertEquals(AuthResult.INTERNAL_ERROR,
+                service.login(uuid, "Player", "pw".toCharArray(), new byte[]{1}).join(),
+                "a failed lookup must deny the login, not skip the second factor");
+    }
 }

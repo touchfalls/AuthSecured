@@ -6,15 +6,18 @@ import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
 import io.github.touchfalls.authsecured.infrastructure.security.IpHashService;
 import io.github.touchfalls.authsecured.paper.player.PlayerRestrictionManager;
 import io.github.touchfalls.authsecured.paper.scheduler.PaperScheduler;
+import io.github.touchfalls.authsecured.util.PremiumIdentity;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +45,33 @@ public class PlayerConnectionListener implements Listener {
         this.scheduler = scheduler;
     }
 
+    /**
+     * Vanilla kicks the online player when the same UUID joins again. In offline mode anyone can join
+     * under another player's name, so an authenticated player is only replaced by a connection from
+     * the same address (a real reconnect after a dropped connection). The name is compared without
+     * case, because "sTeve" is a different UUID but looks like "Steve".
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    @SuppressWarnings("deprecation")
+    public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+        if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) return;
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            boolean sameIdentity = online.getUniqueId().equals(event.getUniqueId())
+                    || online.getName().equalsIgnoreCase(event.getName());
+            InetSocketAddress onlineSocket = online.getAddress();
+            if (sameIdentity && isForeignReplacement(restrictionManager.isAuthenticated(online.getUniqueId()),
+                    onlineSocket == null ? null : onlineSocket.getAddress(), event.getAddress())) {
+                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, configManager.getMessage(
+                        "messages.duplicate-login-denied", "&cThis player is already online."));
+                return;
+            }
+        }
+    }
+
+    static boolean isForeignReplacement(boolean onlineAuthenticated, InetAddress onlineAddress, InetAddress newAddress) {
+        return onlineAuthenticated && onlineAddress != null && !onlineAddress.equals(newAddress);
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
@@ -52,7 +82,8 @@ public class PlayerConnectionListener implements Listener {
         authenticationTimeoutService.start(uuid);
 
         boolean onlineModeBypass = configManager.getBoolean("auth.online-mode.bypass-password", true);
-        if (onlineModeBypass && Bukkit.getOnlineMode()) {
+        if (onlineModeBypass && PremiumIdentity.isVerified(uuid, Bukkit.getOnlineMode(),
+                configManager.getBoolean("auth.online-mode.trust-proxy-uuid", false))) {
             restrictionManager.setPlayerAuthenticated(uuid);
             authenticationTimeoutService.clear(uuid);
             player.sendMessage(configManager.getMessage("messages.auth-bypass", "&aOnline-mode active: Automatically authenticated!"));

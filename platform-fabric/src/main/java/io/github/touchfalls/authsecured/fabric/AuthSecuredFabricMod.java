@@ -6,6 +6,7 @@ import io.github.touchfalls.authsecured.fabric.adapter.FabricLogger;
 import io.github.touchfalls.authsecured.fabric.adapter.FabricPlayerRestrictionAdapter;
 import io.github.touchfalls.authsecured.fabric.command.FabricCommandRegistration;
 import io.github.touchfalls.authsecured.infrastructure.config.ConfigManager;
+import io.github.touchfalls.authsecured.util.PremiumIdentity;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -44,6 +45,7 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
     public void onInitializeServer() {
         instance = this;
         this.platform = new FabricAuthPlatform(new FabricLogger(LOGGER), restrictionAdapter);
+        this.platform.setAddressSource(playerAddresses::values);
 
         FabricCommandRegistration.register(this);
         registerLifecycleEvents();
@@ -103,14 +105,17 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
             }
 
             if (!initialized) {
-                player.sendSystemMessage(Component.literal(message("messages.initialization-failed",
-                        "§cAuthSecured is not initialized.")));
+                // No timeout runs without a container, so a frozen player would otherwise stay forever.
+                platform.disconnectPlayer(uuid, message("messages.initialization-failed",
+                        "§cAuthSecured is not initialized."));
                 return;
             }
 
             ConfigManager config = container.getConfigManager();
             container.getAuthenticationTimeoutService().start(uuid);
-            if (platform.isOnlineMode() && config.getBoolean("auth.online-mode.bypass-password", true)) {
+            if (config.getBoolean("auth.online-mode.bypass-password", true)
+                    && PremiumIdentity.isVerified(uuid, platform.isOnlineMode(),
+                    config.getBoolean("auth.online-mode.trust-proxy-uuid", false))) {
                 restrictionAdapter.setPlayerAuthenticated(uuid);
                 container.getAuthenticationTimeoutService().clear(uuid);
                 player.sendSystemMessage(Component.literal(config.getMessage("messages.auth-bypass",
@@ -253,8 +258,8 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
         }
         String normalized = command.startsWith("/") ? command : "/" + command;
         normalized = normalized.strip().toLowerCase(Locale.ROOT).split("\\s+", 2)[0];
-        List<String> defaults = List.of("/login", "/l", "/register", "/reg", "/changepassword", "/cp");
-        return container.getConfigManager().getStringList("restrictions.allowed-commands", defaults)
+        List<String> defaults = List.of("/login", "/l", "/register", "/reg", "/changepassword", "/cp", "/2fa");
+        return container.getConfigManager().getAllowedCommands(defaults)
                 .stream()
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .anyMatch(normalized::equals);

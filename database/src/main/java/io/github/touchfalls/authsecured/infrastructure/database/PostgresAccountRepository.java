@@ -228,6 +228,33 @@ public class PostgresAccountRepository implements AccountRepository {
     }
 
     @Override
+    public CompletableFuture<Optional<byte[]>> exchangeLastLoginIpHash(Long accountId, byte[] ipHash) {
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection conn = dataSource.getConnection()) {
+                conn.setAutoCommit(false);
+                byte[] previous = null;
+                try (PreparedStatement select = conn.prepareStatement(
+                        "SELECT last_login_ip_hash FROM accounts WHERE id = ? FOR UPDATE")) {
+                    select.setLong(1, accountId);
+                    try (ResultSet rs = select.executeQuery()) {
+                        if (rs.next()) previous = rs.getBytes(1);
+                    }
+                }
+                try (PreparedStatement update = conn.prepareStatement(
+                        "UPDATE accounts SET last_login_ip_hash = ? WHERE id = ?")) {
+                    update.setBytes(1, ipHash);
+                    update.setLong(2, accountId);
+                    update.executeUpdate();
+                }
+                conn.commit();
+                return Optional.ofNullable(previous);
+            } catch (SQLException e) {
+                throw new RuntimeException("Error recording the last login address", e);
+            }
+        }, executor);
+    }
+
+    @Override
     public CompletableFuture<Boolean> resetFailedAttemptsAtomic(Long accountId, Instant now) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = "UPDATE accounts SET failed_login_attempts = 0, locked_until = NULL, "

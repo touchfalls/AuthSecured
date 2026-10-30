@@ -80,6 +80,31 @@ public class DatabaseSessionRepository implements SessionRepository {
     }
 
     @Override
+    public CompletableFuture<Integer> countActiveByPlayerUuid(UUID playerUuid) {
+        return CompletableFuture.supplyAsync(() -> {
+            String sql = isPostgres ?
+                    "SELECT COUNT(*) FROM sessions s JOIN accounts a ON s.account_id = a.id " +
+                            "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > NOW()" :
+                    "SELECT COUNT(*) FROM sessions s JOIN accounts a ON s.account_id = a.id " +
+                            "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > ?";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                if (isPostgres) {
+                    stmt.setObject(1, playerUuid);
+                } else {
+                    stmt.setString(1, playerUuid.toString());
+                    stmt.setString(2, Instant.now().toString());
+                }
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : 0;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("Error counting active sessions", e);
+            }
+        }, executor);
+    }
+
+    @Override
     public CompletableFuture<Optional<Session>> findActiveByPlayerUuid(UUID playerUuid) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = isPostgres ?

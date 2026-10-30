@@ -1,4 +1,4 @@
-# AuthSecured 1.2.3
+# AuthSecured 1.2.7
 
 AuthSecured is one authentication codebase delivered as either a server plugin
 or a Fabric server mod. It supports Minecraft 1.21 through the current stable
@@ -6,7 +6,7 @@ release, 26.3.
 
 ## Platforms
 
-- Paper, Purpur, Folia, Spigot, and Leaf: install `authsecured-paper-1.2.3.jar`
+- Paper, Purpur, Folia, Spigot, and Leaf: install `authsecured-paper-1.2.7.jar`
   in `plugins/`.
 - Fabric: install the JAR whose `+mc...` suffix exactly matches the Minecraft
   version in `mods/`, together with the matching Fabric API release.
@@ -50,8 +50,8 @@ select Java 21 for Minecraft 1.21.x and Java 25-compatible bytecode for 26.x.
 
 This runs every unit/integration test and builds:
 
-- `build/libs/authsecured-paper-1.2.3.jar`
-- `build/libs/authsecured-fabric-1.2.3+mc26.3.jar`
+- `build/libs/authsecured-paper-1.2.7.jar`
+- `build/libs/authsecured-fabric-1.2.7+mc26.3.jar`
 
 Build every supported Fabric target:
 
@@ -104,6 +104,8 @@ target different server APIs.
 | `/changepassword` | `/changepassword <old> <new>` | everyone |
 | `/logout` | `/logout` | everyone |
 | `/authstatus` | `/authstatus` | everyone |
+| `/sessions` | `/sessions [revoke]` shows or ends your saved sessions | everyone |
+| `/2fa` | `/2fa enable`, `/2fa confirm <code>`, `/2fa disable <code>`, `/2fa status`; after `/login`, `/2fa <code>` finishes the login | everyone |
 | `/authadmin status` | show service and database state | `authsecured.admin.status` / level 2 |
 | `/authadmin doctor` | run configuration diagnostics | `authsecured.admin.doctor` / level 3 |
 | `/authadmin reload` | reload runtime configuration | `authsecured.admin.reload` / level 3 |

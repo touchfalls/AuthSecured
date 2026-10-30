@@ -16,6 +16,19 @@ public interface UnifiedCommandExecutor {
     void executeAuthStatus(UUID playerUuid);
 
     /**
+     * {@code /2fa}: {@code args} is everything after the command name. {@code enable}, {@code confirm <code>},
+     * {@code disable <code>} and {@code status} manage the authenticator of a logged-in player; a bare code
+     * finishes a login that already passed the password step.
+     */
+    CompletableFuture<Void> executeTwoFactor(UUID playerUuid, String playerName, String[] args, String ipAddress);
+
+    /**
+     * {@code /sessions}: tells an authenticated player how many saved sessions their account has;
+     * with {@code revoke} it ends all of them but keeps this connection logged in.
+     */
+    CompletableFuture<Void> executeSessions(UUID playerUuid, boolean revoke);
+
+    /**
      * Returns an online player to the pre-login state after an administrator invalidated
      * their credentials, so a connection that authenticated earlier cannot outlive them.
      * Does nothing if the player is offline.

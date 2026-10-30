@@ -115,12 +115,20 @@ public final class AdminOperations {
                 String sslMode = postgresSslMode();
                 addCheck(lines, isLoopbackHost(container.getConfigManager().getString(
                                 "database.postgresql.host", "localhost"))
-                                || !Set.of("disable", "allow").contains(sslMode),
+                                || !Set.of("disable", "allow", "prefer").contains(sslMode),
                         message("messages.admin-doctor-database-tls-ok", "Database transport encryption"),
                         message("messages.admin-doctor-database-tls-fail",
                                 "PostgreSQL on a remote host uses ssl-mode {mode}, which can send data "
                                         + "unencrypted. Use verify-full.", Map.of("mode", sslMode)));
             }
+            // Behind a proxy that does not forward the player's IP, every player shares the proxy's
+            // address: IP rate limits lock everyone together and IP-bound sessions mean nothing.
+            addCheck(lines, !playersShareOneLocalAddress(container.getPlatform().onlinePlayerAddresses()),
+                    message("messages.admin-doctor-proxy-ip-ok", "Player IP addresses"),
+                    message("messages.admin-doctor-proxy-ip-fail",
+                            "Several players share one local address. If a proxy is in front of this server, "
+                                    + "enable IP forwarding (Velocity modern forwarding or BungeeCord ip_forward), "
+                                    + "or IP limits and sessions apply to all of them together."));
             boolean notificationEnabled = container.getConfigManager().getBoolean(
                     "notifications.login-failures.enabled", false);
             boolean discordTarget = container.getConfigManager().getBoolean(
@@ -254,6 +262,23 @@ public final class AdminOperations {
                 ? "require" : "prefer";
         return container.getConfigManager().getString("database.postgresql.ssl-mode", fallback)
                 .toLowerCase(Locale.ROOT);
+    }
+
+    /** True when at least two players are online and all of them have the same loopback or private address. */
+    static boolean playersShareOneLocalAddress(java.util.Collection<String> addresses) {
+        if (addresses == null || addresses.size() < 2) return false;
+        java.util.Set<String> distinct = new java.util.HashSet<>(addresses);
+        if (distinct.size() != 1) return false;
+        String address = distinct.iterator().next();
+        if (!address.matches("[0-9a-fA-F:.]+")) return false; // only literals, never a DNS lookup
+        try {
+            java.net.InetAddress inet = java.net.InetAddress.getByName(address);
+            byte[] raw = inet.getAddress();
+            boolean uniqueLocalV6 = raw.length == 16 && (raw[0] & 0xFE) == 0xFC;
+            return inet.isLoopbackAddress() || inet.isSiteLocalAddress() || inet.isLinkLocalAddress() || uniqueLocalV6;
+        } catch (java.net.UnknownHostException e) {
+            return false;
+        }
     }
 
     static boolean isLoopbackHost(String host) {

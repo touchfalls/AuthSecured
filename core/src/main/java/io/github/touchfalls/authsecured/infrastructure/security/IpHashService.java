@@ -70,6 +70,17 @@ public class IpHashService {
         }
     }
 
+    /** A 32-byte key for another purpose, derived from the server secret so it needs no second secret file. */
+    public byte[] deriveKey(String purpose) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
+            return mac.doFinal(("authsecured:key:" + purpose).getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IllegalStateException("Failed to derive a key", e);
+        }
+    }
+
     public String hashIpToString(String ipAddress) {
         byte[] hash = hashIp(ipAddress);
         if (hash == null) return null;

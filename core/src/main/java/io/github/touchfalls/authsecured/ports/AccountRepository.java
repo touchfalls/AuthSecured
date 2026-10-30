@@ -29,6 +29,12 @@ public interface AccountRepository {
     CompletableFuture<Boolean> incrementFailedAttemptsAtomic(Long accountId, int maxAttempts,
                                                               long lockDurationSeconds, Instant now);
     CompletableFuture<Boolean> resetFailedAttemptsAtomic(Long accountId, Instant now);
+
+    /**
+     * Stores the IP hash of a successful login and returns the previous one, empty when the account
+     * had none (first login, or an account from before this was recorded).
+     */
+    CompletableFuture<Optional<byte[]>> exchangeLastLoginIpHash(Long accountId, byte[] ipHash);
     /** Updates only the password, clearing any pending temporary-password state. Leaves lock state untouched. */
     CompletableFuture<Boolean> updatePasswordHash(Long accountId, String newPasswordHash, Instant now);
     /**

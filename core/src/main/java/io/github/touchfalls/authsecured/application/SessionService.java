@@ -82,6 +82,19 @@ public class SessionService {
                 .thenApply(opt -> opt.map(session -> isValid(session, playerIpHash)).orElse(false));
     }
 
+    public CompletableFuture<Integer> countActiveSessions(UUID playerUuid) {
+        if (!enabled) {
+            return CompletableFuture.completedFuture(0);
+        }
+        if (!persistent) {
+            return initialization.thenApply(ignored -> {
+                Session session = volatileSessions.get(playerUuid);
+                return session != null && session.isValid(Instant.now()) ? 1 : 0;
+            });
+        }
+        return sessionRepository.countActiveByPlayerUuid(playerUuid);
+    }
+
     public CompletableFuture<Void> revokeSession(UUID sessionId) {
         if (!persistent) {
             return initialization.thenRun(() ->

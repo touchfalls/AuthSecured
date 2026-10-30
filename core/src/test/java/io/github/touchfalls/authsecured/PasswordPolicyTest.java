@@ -19,4 +19,33 @@ class PasswordPolicyTest {
 
         passwordService.shutdown();
     }
+
+    @Test
+    void testMinimumLengthBoundary() {
+        Argon2PasswordHasher hasher = new Argon2PasswordHasher(1024, 1, 1, 16, 8);
+        PasswordService passwordService = new PasswordService(hasher, 8, 128, 2);
+
+        assertEquals(8, passwordService.getMinLength());
+        assertTrue(passwordService.validatePolicy("x7Qp9zLm".toCharArray()));
+        assertFalse(passwordService.validatePolicy("x7Qp9zL".toCharArray()));
+
+        passwordService.shutdown();
+    }
+
+    @Test
+    void commonPasswordsAndTheUsernameAreRejected() {
+        Argon2PasswordHasher hasher = new Argon2PasswordHasher(1024, 1, 1, 16, 8);
+        PasswordService passwordService = new PasswordService(hasher, 8, 128, 2);
+
+        assertFalse(passwordService.validatePolicy("password123".toCharArray()));
+        assertFalse(passwordService.validatePolicy("PassWord123".toCharArray()));
+        assertFalse(passwordService.validatePolicy("12345678".toCharArray()));
+        assertTrue(passwordService.validatePolicy("correct-horse-battery".toCharArray()));
+
+        assertTrue(PasswordService.matchesUsername("STEVE_123".toCharArray(), "steve_123"));
+        assertFalse(PasswordService.matchesUsername("steve_1234".toCharArray(), "steve_123"));
+        assertFalse(PasswordService.matchesUsername("steve_123".toCharArray(), null));
+
+        passwordService.shutdown();
+    }
 }

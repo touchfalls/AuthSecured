@@ -54,13 +54,33 @@ public class AuthService {
         return loginService.login(playerUuid, username, password, ipHash);
     }
 
+    private volatile TwoFactorService twoFactorService;
+
+    public void setTwoFactorService(TwoFactorService twoFactorService) {
+        this.twoFactorService = twoFactorService;
+    }
+
+    /** Null when two-factor authentication is not available on this server. */
+    public TwoFactorService getTwoFactorService() {
+        return twoFactorService;
+    }
+
+    private CompletableFuture<Void> resetTwoFactor(Long accountId) {
+        TwoFactorService twoFactor = twoFactorService;
+        return twoFactor == null ? CompletableFuture.completedFuture(null) : twoFactor.resetForRecovery(accountId);
+    }
+
+    public int getPasswordMinLength() {
+        return passwordService.getMinLength();
+    }
+
     /**
      * Changes the password after the old one passes the same checks as {@code /login}:
      * rate limits, failed-attempt counter, account lock and temporary-password expiry.
      */
     public CompletableFuture<AuthResult> changePassword(UUID playerUuid, String username, char[] oldPassword,
                                                         char[] newPassword, byte[] ipHash) {
-        if (!passwordService.validatePolicy(newPassword)) {
+        if (!passwordService.validatePolicy(newPassword) || PasswordService.matchesUsername(newPassword, username)) {
             return CompletableFuture.completedFuture(AuthResult.VALIDATION_FAILED);
         }
         if (ipHash == null || ipHash.length == 0) {
@@ -126,6 +146,7 @@ public class AuthService {
                                         .thenCompose(updated -> updated
                                                 ? sessionService.revokeAllSessionsForAccount(account.getId())
                                                 : CompletableFuture.failedFuture(new IllegalStateException("Account update failed")))
+                                        .thenCompose(v -> resetTwoFactor(account.getId()))
                                         .thenCompose(v -> loginService.clearRateLimit(normalized))
                                         .thenCompose(v -> securityService.logSecurityEvent(account.getId(),
                                                 SecurityEventType.TEMPORARY_PASSWORD_ISSUED, null, "{}"))

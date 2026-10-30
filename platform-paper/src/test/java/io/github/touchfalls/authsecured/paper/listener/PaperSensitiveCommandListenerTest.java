@@ -50,6 +50,6 @@ class PaperSensitiveCommandListenerTest {
     void declaredPasswordLabelsToleratesMissingCommandDefinitions() {
         java.util.Map<String, String> labels = PaperSensitiveCommandListener.declaredPasswordLabels(null);
 
-        assertEquals(java.util.Set.of("login", "register", "changepassword"), labels.keySet());
+        assertEquals(java.util.Set.of("login", "register", "changepassword", "2fa"), labels.keySet());
     }
 }

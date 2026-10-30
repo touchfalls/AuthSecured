@@ -5,14 +5,18 @@ import io.github.touchfalls.authsecured.domain.auth.AuthResult;
 import io.github.touchfalls.authsecured.domain.security.SecurityEventType;
 import io.github.touchfalls.authsecured.ports.AccountRepository;
 import io.github.touchfalls.authsecured.ports.SecurityNotifier;
+import io.github.touchfalls.authsecured.ports.TotpRepository;
 import io.github.touchfalls.authsecured.ports.PlatformLogger;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
 import io.github.touchfalls.authsecured.util.UsernameNormalizer;
 
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoginService {
 
@@ -37,6 +41,8 @@ public class LoginService {
     private final long lockDurationSeconds;
     private final SecurityNotifier securityNotifier;
     private final PlatformLogger logger;
+    private volatile TotpRepository totpRepository;
+    private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
 
     public LoginService(AccountRepository accountRepository, PasswordService passwordService,
                         RateLimitService rateLimitService, SessionService sessionService,
@@ -88,15 +94,18 @@ public class LoginService {
                                         "TEMPORARY_PASSWORD_ACCEPTED"))
                                 .thenApply(v -> AuthResult.PASSWORD_CHANGE_REQUIRED);
                     }
-                    return recordSuccessfulAuthentication(account, check.usernameNormalized(), now)
-                            .thenCompose(v -> sessionService.createSession(
-                                    account.getId(), playerUuid, ipHash, "default-server"))
-                            .thenCompose(session -> securityService.logLoginAttempt(account.getId(), ipHash, true, "SUCCESS"))
-                            .thenCompose(v -> securityService.logSecurityEvent(account.getId(), SecurityEventType.LOGIN_SUCCESS, ipHash, "{}"))
-                            .thenApply(v -> {
-                                upgradeHashIfOutdated(account, password);
-                                return AuthResult.SUCCESS;
-                            });
+                    return hasTwoFactor(account).thenCompose(twoFactor -> {
+                        upgradeHashIfOutdated(account, password);
+                        if (twoFactor) {
+                            // The password alone is not enough: no session and no reset of the failure
+                            // counters until the code is accepted (TwoFactorService).
+                            return securityService.logLoginAttempt(account.getId(), ipHash, false, "TWO_FACTOR_PENDING")
+                                    .thenApply(v -> AuthResult.TWO_FACTOR_REQUIRED);
+                        }
+                        return completeLogin(account, playerUuid, check.usernameNormalized(), ipHash)
+                                .thenApply(newAddress -> newAddress
+                                        ? AuthResult.SUCCESS_NEW_ADDRESS : AuthResult.SUCCESS);
+                    });
                 }).exceptionally(ex -> {
                     if (logger != null) logger.severe("Login failed internally ("
                             + FailureDiagnostics.causeTypes(ex) + "). Sensitive details are hidden.");
@@ -120,6 +129,26 @@ public class LoginService {
      */
     public CompletableFuture<CredentialCheck> verifyCredentials(UUID playerUuid, String username,
                                                                 char[] password, byte[] ipHash) {
+        if (playerUuid == null) {
+            return checkCredentials(null, username, password, ipHash);
+        }
+        // One check per player at a time: the lock and rate-limit state is read before Argon2 and
+        // written after it, so parallel guesses would all pass a stale "not locked" snapshot.
+        if (!inFlight.add(playerUuid)) {
+            return CompletableFuture.completedFuture(
+                    rejected(AuthResult.RATE_LIMITED, UsernameNormalizer.normalize(username)));
+        }
+        try {
+            return checkCredentials(playerUuid, username, password, ipHash)
+                    .whenComplete((result, error) -> inFlight.remove(playerUuid));
+        } catch (RuntimeException exception) {
+            inFlight.remove(playerUuid);
+            throw exception;
+        }
+    }
+
+    private CompletableFuture<CredentialCheck> checkCredentials(UUID playerUuid, String username,
+                                                                char[] password, byte[] ipHash) {
         if (playerUuid == null || password == null || ipHash == null || ipHash.length == 0) {
             return CompletableFuture.completedFuture(new CredentialCheck(AuthResult.INTERNAL_ERROR, null, ""));
         }
@@ -135,8 +164,10 @@ public class LoginService {
             }
             return accountRepository.findByUuid(playerUuid).thenCompose(optAccount -> {
                 Account account = optAccount.orElse(null);
-                String normalized = account != null && requestedName.isBlank()
-                        ? account.getUsernameNormalized() : requestedName;
+                // The account limit is keyed by the stored account, never by the typed name: in offline
+                // mode "sTeve" has its own UUID and no account, and must not lock the real "Steve".
+                // Without an account only the IP limit applies.
+                String normalized = account != null ? account.getUsernameNormalized() : "";
                 return rateLimitService.isAccountRateLimited(normalized).thenCompose(accountLimited -> {
                     if (accountLimited) {
                         return securityService.logLoginAttempt(account == null ? null : account.getId(),
@@ -159,6 +190,50 @@ public class LoginService {
                 });
             });
         });
+    }
+
+    /** Enables the authenticator check in {@link #login}; without it passwords alone log in. */
+    public void enableTwoFactor(TotpRepository totpRepository) {
+        this.totpRepository = totpRepository;
+    }
+
+    // A failed lookup fails the login: with an authenticator set up, guessing wrong must never mean "allow".
+    private CompletableFuture<Boolean> hasTwoFactor(Account account) {
+        TotpRepository repository = totpRepository;
+        if (repository == null) return CompletableFuture.completedFuture(false);
+        return repository.find(account.getId())
+                .thenApply(state -> state.map(TotpRepository.State::enabled).orElse(false));
+    }
+
+    /**
+     * Everything that follows a proven login: clears the failure counters, opens the session, audits and
+     * checks the address. Returns whether the address differs from the previous login.
+     */
+    public CompletableFuture<Boolean> completeLogin(Account account, UUID playerUuid,
+                                                    String usernameNormalized, byte[] ipHash) {
+        return recordSuccessfulAuthentication(account, usernameNormalized, Instant.now())
+                .thenCompose(v -> sessionService.createSession(account.getId(), playerUuid, ipHash, "default-server"))
+                .thenCompose(session -> securityService.logLoginAttempt(account.getId(), ipHash, true, "SUCCESS"))
+                .thenCompose(v -> securityService.logSecurityEvent(
+                        account.getId(), SecurityEventType.LOGIN_SUCCESS, ipHash, "{}"))
+                .thenCompose(v -> notePreviousAddress(account, ipHash));
+    }
+
+    /**
+     * Records this login's address and reports whether it differs from the previous one. A failure
+     * here only loses the notice; it must not fail a login that already succeeded.
+     */
+    private CompletableFuture<Boolean> notePreviousAddress(Account account, byte[] ipHash) {
+        return accountRepository.exchangeLastLoginIpHash(account.getId(), ipHash)
+                .thenCompose(previous -> {
+                    if (previous.isEmpty() || MessageDigest.isEqual(previous.get(), ipHash)) {
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return securityService.logSecurityEvent(
+                                    account.getId(), SecurityEventType.LOGIN_NEW_ADDRESS, ipHash, "{}")
+                            .thenApply(v -> true);
+                })
+                .exceptionally(error -> false);
     }
 
     private CompletableFuture<CredentialCheck> evaluate(Account account, boolean valid, String normalized,

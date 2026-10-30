@@ -44,7 +44,7 @@ public class RegistrationService {
             return CompletableFuture.completedFuture(AuthResult.VALIDATION_FAILED);
         }
 
-        if (!passwordService.validatePolicy(password)) {
+        if (!passwordService.validatePolicy(password) || PasswordService.matchesUsername(password, username)) {
             return CompletableFuture.completedFuture(AuthResult.VALIDATION_FAILED);
         }
 

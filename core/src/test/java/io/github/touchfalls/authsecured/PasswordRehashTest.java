@@ -92,6 +92,8 @@ class PasswordRehashTest {
         if (temporary) account.setTemporaryPassword(passwordHash, Instant.now().plusSeconds(300));
         when(accounts.findByUuid(any())).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
         when(accounts.resetFailedAttemptsAtomic(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
+        when(accounts.exchangeLastLoginIpHash(any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
         return accounts;
     }
 

@@ -2,6 +2,13 @@ package io.github.touchfalls.authsecured.application;
 
 import io.github.touchfalls.authsecured.ports.PasswordHasher;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -16,6 +23,8 @@ public class PasswordService {
     // Each queued job holds a password in memory until it runs; a flood of login
     // attempts must not grow that queue, and the password memory it holds, without limit.
     private static final int QUEUE_CAPACITY_PER_WORKER = 16;
+
+    private static final char[][] COMMON_PASSWORDS = loadCommonPasswords();
 
     private final PasswordHasher passwordHasher;
     private final int minLength;
@@ -40,7 +49,46 @@ public class PasswordService {
     public boolean validatePolicy(char[] password) {
         if (password == null) return false;
         int len = password.length;
-        return len >= minLength && len <= maxLength;
+        return len >= minLength && len <= maxLength && !isCommon(password);
+    }
+
+    /** True when the password equals the player's name, ignoring case. */
+    public static boolean matchesUsername(char[] password, String username) {
+        if (password == null || username == null || password.length != username.length()) return false;
+        for (int i = 0; i < password.length; i++) {
+            if (Character.toLowerCase(password[i]) != Character.toLowerCase(username.charAt(i))) return false;
+        }
+        return true;
+    }
+
+    // Compared as chars so a lower-cased copy of the password never becomes an immutable String.
+    private static boolean isCommon(char[] password) {
+        char[] lower = new char[password.length];
+        try {
+            for (int i = 0; i < password.length; i++) lower[i] = Character.toLowerCase(password[i]);
+            return Arrays.binarySearch(COMMON_PASSWORDS, lower, Arrays::compare) >= 0;
+        } finally {
+            Arrays.fill(lower, '\0');
+        }
+    }
+
+    private static char[][] loadCommonPasswords() {
+        try (InputStream in = PasswordService.class.getResourceAsStream("/common-passwords.txt")) {
+            if (in == null) return new char[0][];
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            char[][] list = reader.lines().map(String::trim)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                    .map(line -> line.toLowerCase(Locale.ROOT).toCharArray())
+                    .toArray(char[][]::new);
+            Arrays.sort(list, Arrays::compare);
+            return list;
+        } catch (IOException e) {
+            return new char[0][];
+        }
+    }
+
+    public int getMinLength() {
+        return minLength;
     }
 
     public boolean needsRehash(String passwordHash) {
@@ -73,6 +121,15 @@ public class PasswordService {
     public void shutdown() {
         if (!authExecutor.isShutdown()) {
             authExecutor.shutdown();
+            try {
+                // Checks already running finish their database writes before the pool closes.
+                if (!authExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    authExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                authExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }

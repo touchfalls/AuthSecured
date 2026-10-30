@@ -8,7 +8,7 @@ import java.util.Locale;
 public final class SecretRedactor {
 
     private static final Set<String> DEFAULT_PASSWORD_COMMANDS = Set.of(
-            "login", "l", "register", "reg", "changepassword", "cp"
+            "login", "l", "register", "reg", "changepassword", "cp", "2fa"
     );
     private static volatile Set<String> passwordCommands = DEFAULT_PASSWORD_COMMANDS;
     private static final String REDACTED = "[REDACTED]";
@@ -17,7 +17,7 @@ public final class SecretRedactor {
 
     /** Publish the aliases actually registered by the hosting command system. */
     public static void registerPasswordAliases(Collection<String> aliases) {
-        Set<String> names = new HashSet<>(Set.of("login", "register", "changepassword"));
+        Set<String> names = new HashSet<>(Set.of("login", "register", "changepassword", "2fa"));
         for (String alias : aliases) {
             if (alias != null && !alias.isBlank()) names.add(unqualified(alias).toLowerCase(Locale.ROOT));
         }

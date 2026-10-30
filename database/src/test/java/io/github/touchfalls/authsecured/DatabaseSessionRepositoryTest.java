@@ -71,6 +71,27 @@ class DatabaseSessionRepositoryTest {
     }
 
     @Test
+    @DisplayName("Counts only valid sessions of the account")
+    void countsActiveSessionsOfTheAccount() {
+        UUID playerUuid = UUID.randomUUID();
+        Long accountId = new SqliteAccountRepository(databaseManager.getDataSource(),
+                databaseManager.getDbExecutor()).save(Account.createNew(
+                playerUuid, "CountUser", "countuser", "hash"), null).join().getId();
+        Session first = Session.create(accountId, playerUuid, "server-1", 1800);
+        Session second = Session.create(accountId, playerUuid, "server-2", 1800);
+        Session expired = Session.create(accountId, playerUuid, "server-3", -60);
+        repository.save(first).join();
+        repository.save(second).join();
+        repository.save(expired).join();
+
+        assertEquals(2, repository.countActiveByPlayerUuid(playerUuid).join());
+
+        repository.revoke(first.getId()).join();
+        assertEquals(1, repository.countActiveByPlayerUuid(playerUuid).join());
+        assertEquals(0, repository.countActiveByPlayerUuid(UUID.randomUUID()).join());
+    }
+
+    @Test
     void deleteAllClosesConnectionsAndRemovesStoredSessions() {
         repository.deleteAll().join();
         assertEquals(0, databaseManager.getActiveConnections());

@@ -26,6 +26,18 @@ public final class FabricAuthPlatform implements AuthPlatform {
         this.restrictionAdapter = restrictionAdapter;
     }
 
+    private volatile java.util.function.Supplier<java.util.Collection<String>> addressSource = java.util.List::of;
+
+    /** The mod records each player's address on join; this is read from the doctor on another thread. */
+    public void setAddressSource(java.util.function.Supplier<java.util.Collection<String>> addressSource) {
+        this.addressSource = addressSource;
+    }
+
+    @Override
+    public java.util.Collection<String> onlinePlayerAddresses() {
+        return java.util.List.copyOf(addressSource.get());
+    }
+
     public void setServer(MinecraftServer server) {
         this.server = server;
     }

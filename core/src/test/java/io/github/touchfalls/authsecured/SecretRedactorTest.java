@@ -38,4 +38,10 @@ class SecretRedactorTest {
             SecretRedactor.registerPasswordAliases(Set.of("l", "reg", "cp"));
         }
     }
+
+    @Test
+    void authenticatorCodesAreRedactedFromCommandLogs() {
+        org.junit.jupiter.api.Assertions.assertEquals("/2fa [REDACTED]", SecretRedactor.redactCommand("/2fa ABCDE-FGH23"));
+        org.junit.jupiter.api.Assertions.assertEquals("/2fa [REDACTED] [REDACTED]", SecretRedactor.redactCommand("/2fa disable 123456"));
+    }
 }

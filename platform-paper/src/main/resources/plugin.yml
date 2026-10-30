@@ -25,6 +25,12 @@ commands:
   authstatus:
     description: Check authentication status.
     usage: /authstatus
+  2fa:
+    description: Set up or use two-factor authentication.
+    usage: /2fa <code|enable|confirm <code>|disable <code>|status>
+  sessions:
+    description: Show or end your saved login sessions.
+    usage: /sessions [revoke]
   authadmin:
     description: Admin authentication operations.
     usage: /authadmin <status|doctor|reload|session|audit|unlock|unregister|resetpassword>

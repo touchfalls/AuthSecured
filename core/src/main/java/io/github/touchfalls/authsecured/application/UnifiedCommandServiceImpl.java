@@ -8,7 +8,10 @@ import io.github.touchfalls.authsecured.ports.AuthPlatform;
 import io.github.touchfalls.authsecured.ports.UnifiedCommandExecutor;
 import io.github.touchfalls.authsecured.util.FailureDiagnostics;
 
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -72,7 +75,8 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                             case RATE_LIMITED -> "messages.rate-limited";
                             default -> "messages.error";
                         };
-                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey, "",
+                                Map.of("min", String.valueOf(authService.getPasswordMinLength()))));
                     }
                 }))
                 .exceptionally(throwable -> {
@@ -101,10 +105,19 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                     // A disconnect-and-reconnect under the same UUID while this was hashing must
                     // not authenticate the new connection with the old one's result (audit #6).
                     if (!Objects.equals(connectionToken, platform.currentConnectionToken(playerUuid))) return;
-                    if (result == AuthResult.SUCCESS) {
+                    if (result == AuthResult.SUCCESS || result == AuthResult.SUCCESS_NEW_ADDRESS) {
                         platform.getRestrictionAdapter().setPlayerAuthenticated(playerUuid);
                         clearAuthenticationTimeout(playerUuid);
                         platform.sendMessage(playerUuid, localizationManager.getMessage("messages.login-success"));
+                        if (result == AuthResult.SUCCESS_NEW_ADDRESS) {
+                            platform.sendMessage(playerUuid, localizationManager.getMessage("messages.login-new-address",
+                                    "&eYou logged in from a different address than last time. "
+                                            + "If this was not you, change your password."));
+                        }
+                    } else if (result == AuthResult.TWO_FACTOR_REQUIRED) {
+                        pendingTwoFactor.put(playerUuid, new PendingTwoFactor(connectionToken,
+                                Instant.now().plus(TWO_FACTOR_WINDOW)));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-required"));
                     } else {
                         if (result == AuthResult.PASSWORD_CHANGE_REQUIRED) {
                             platform.getRestrictionAdapter().setPasswordChangeRequired(playerUuid);
@@ -117,7 +130,8 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                             case TEMPORARY_PASSWORD_EXPIRED -> "messages.temporary-password-expired";
                             default -> "messages.error";
                         };
-                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey, "",
+                                Map.of("min", String.valueOf(authService.getPasswordMinLength()))));
                     }
                 }))
                 .exceptionally(throwable -> {
@@ -164,7 +178,8 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                             case TEMPORARY_PASSWORD_EXPIRED -> "messages.temporary-password-expired";
                             default -> "messages.error";
                         };
-                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(msgKey, "",
+                                Map.of("min", String.valueOf(authService.getPasswordMinLength()))));
                     }
                 }))
                 .exceptionally(throwable -> {
@@ -199,6 +214,135 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
                     String key = throwable == null ? "messages.logged-out" : "messages.error";
                     platform.sendMessage(playerUuid, localizationManager.getMessage(key));
                 }));
+    }
+
+    /** A login that passed the password step and now waits for an authenticator code. */
+    private record PendingTwoFactor(Object connectionToken, Instant expiresAt) { }
+
+    private static final java.time.Duration TWO_FACTOR_WINDOW = java.time.Duration.ofMinutes(5);
+    private final java.util.concurrent.ConcurrentMap<UUID, PendingTwoFactor> pendingTwoFactor =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    @Override
+    public CompletableFuture<Void> executeTwoFactor(UUID playerUuid, String playerName, String[] args, String ipAddress) {
+        TwoFactorService twoFactor = authService.getTwoFactorService();
+        if (twoFactor == null) {
+            return replyTo(playerUuid, "messages.two-factor-unavailable");
+        }
+        pendingTwoFactor.values().removeIf(pending -> pending.expiresAt().isBefore(Instant.now()));
+        boolean authenticated = platform.getRestrictionAdapter().isAuthenticated(playerUuid);
+        String first = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+        byte[] ipHash = ipHashService.hashIp(ipAddress);
+
+        if (!authenticated) {
+            // Before login the only thing /2fa does is take the code of a login that passed its password.
+            PendingTwoFactor pending = pendingTwoFactor.get(playerUuid);
+            if (args.length != 1 || pending == null
+                    || !Objects.equals(pending.connectionToken(), platform.currentConnectionToken(playerUuid))) {
+                return replyTo(playerUuid, args.length == 0 ? "messages.two-factor-usage" : "messages.two-factor-nothing-to-verify");
+            }
+            Object connectionToken = pending.connectionToken();
+            return twoFactor.verifyLogin(playerUuid, args[0], ipHash)
+                    .thenAccept(outcome -> platform.runTaskForPlayer(playerUuid, () -> {
+                        if (!Objects.equals(connectionToken, platform.currentConnectionToken(playerUuid))) return;
+                        if (outcome.status() == TwoFactorService.Status.OK) {
+                            pendingTwoFactor.remove(playerUuid);
+                            platform.getRestrictionAdapter().setPlayerAuthenticated(playerUuid);
+                            clearAuthenticationTimeout(playerUuid);
+                            platform.sendMessage(playerUuid, localizationManager.getMessage("messages.login-success"));
+                            if (outcome.newAddress()) {
+                                platform.sendMessage(playerUuid, localizationManager.getMessage("messages.login-new-address"));
+                            }
+                        } else {
+                            platform.sendMessage(playerUuid, localizationManager.getMessage(twoFactorKey(outcome.status())));
+                        }
+                    }))
+                    .exceptionally(throwable -> twoFactorFailed(playerUuid, throwable));
+        }
+
+        CompletableFuture<TwoFactorService.Outcome> result;
+        switch (first) {
+            case "enable" -> result = twoFactor.beginSetup(playerUuid);
+            case "confirm" -> result = args.length == 2 ? twoFactor.confirmSetup(playerUuid, args[1], ipHash) : null;
+            case "disable" -> result = args.length == 2 ? twoFactor.disable(playerUuid, args[1], ipHash) : null;
+            case "status", "" -> {
+                return twoFactor.isEnabled(playerUuid)
+                        .thenAccept(enabled -> platform.runTaskForPlayer(playerUuid, () -> platform.sendMessage(playerUuid,
+                                localizationManager.getMessage(enabled
+                                        ? "messages.two-factor-status-on" : "messages.two-factor-status-off"))))
+                        .exceptionally(throwable -> twoFactorFailed(playerUuid, throwable));
+            }
+            default -> result = null;
+        }
+        if (result == null) {
+            return replyTo(playerUuid, "messages.two-factor-usage");
+        }
+        return result.thenAccept(outcome -> platform.runTaskForPlayer(playerUuid, () -> {
+                    if (outcome.status() != TwoFactorService.Status.OK) {
+                        platform.sendMessage(playerUuid, localizationManager.getMessage(twoFactorKey(outcome.status())));
+                    } else if ("enable".equals(first)) {
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-setup", "",
+                                Map.of("secret", outcome.secret())));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-setup-link", "",
+                                Map.of("uri", outcome.uri())));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-setup-next"));
+                    } else if ("confirm".equals(first)) {
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-enabled"));
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-backup-codes", "",
+                                Map.of("codes", String.join("  ", outcome.backupCodes()))));
+                    } else {
+                        platform.sendMessage(playerUuid, localizationManager.getMessage("messages.two-factor-disabled"));
+                    }
+                }))
+                .exceptionally(throwable -> twoFactorFailed(playerUuid, throwable));
+    }
+
+    private static String twoFactorKey(TwoFactorService.Status status) {
+        return switch (status) {
+            case INVALID_CODE -> "messages.two-factor-invalid-code";
+            case ALREADY_ENABLED -> "messages.two-factor-already-enabled";
+            case NOT_ENABLED -> "messages.two-factor-not-enabled";
+            case NO_PENDING -> "messages.two-factor-no-pending";
+            case RATE_LIMITED -> "messages.rate-limited";
+            case ACCOUNT_LOCKED -> "messages.account-locked";
+            default -> "messages.error";
+        };
+    }
+
+    private CompletableFuture<Void> replyTo(UUID playerUuid, String key) {
+        platform.runTaskForPlayer(playerUuid, () -> platform.sendMessage(playerUuid, localizationManager.getMessage(key)));
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private Void twoFactorFailed(UUID playerUuid, Throwable throwable) {
+        logFailure("Two-factor command", throwable);
+        platform.runTaskForPlayer(playerUuid, () -> platform.sendMessage(playerUuid, localizationManager.getMessage("messages.error")));
+        return null;
+    }
+
+    @Override
+    public CompletableFuture<Void> executeSessions(UUID playerUuid, boolean revoke) {
+        if (!platform.getRestrictionAdapter().isAuthenticated(playerUuid)) {
+            platform.runTaskForPlayer(playerUuid, () -> platform.sendMessage(playerUuid,
+                    localizationManager.getMessage("messages.must-auth", "&cYou are not authenticated!")));
+            return CompletableFuture.completedFuture(null);
+        }
+        SessionService sessions = authService.getSessionService();
+        CompletableFuture<String> message = revoke
+                ? sessions.revokeActiveSessionForPlayer(playerUuid)
+                        .thenApply(ignored -> localizationManager.getMessage("messages.sessions-revoked",
+                                "&aAll saved sessions were ended. You stay logged in on this connection."))
+                : sessions.countActiveSessions(playerUuid)
+                        .thenApply(count -> localizationManager.getMessage("messages.sessions-count",
+                                "&eActive saved sessions: &f{count}",
+                                Map.of("count", String.valueOf(count))));
+        return message
+                .exceptionally(throwable -> {
+                    logFailure("Sessions command", throwable);
+                    return localizationManager.getMessage("messages.error");
+                })
+                .thenAccept(text -> platform.runTaskForPlayer(playerUuid,
+                        () -> platform.sendMessage(playerUuid, text)));
     }
 
     @Override

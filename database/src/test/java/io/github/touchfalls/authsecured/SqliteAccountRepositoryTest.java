@@ -239,10 +239,14 @@ class SqliteAccountRepositoryTest {
                     null, null, "accounts", "registration_ip_hash")) {
                 assertTrue(ipColumn.next());
             }
+            try (ResultSet lastLoginColumn = connection.getMetaData().getColumns(
+                    null, null, "accounts", "last_login_ip_hash")) {
+                assertTrue(lastLoginColumn.next());
+            }
             try (Statement statement = connection.createStatement();
                  ResultSet version = statement.executeQuery("SELECT version FROM authsecured_schema_version")) {
                 assertTrue(version.next());
-                assertEquals(3, version.getInt(1));
+                assertEquals(5, version.getInt(1));
             }
             try (Statement statement = connection.createStatement();
                  ResultSet table = statement.executeQuery(
@@ -317,5 +321,15 @@ class SqliteAccountRepositoryTest {
             assertTrue(rows.next());
             assertEquals(0, rows.getInt(1));
         }
+    }
+
+    @Test
+    void lastLoginAddressIsReturnedOnTheNextLogin() {
+        Long id = repository.save(Account.createNew(UUID.randomUUID(), "AddrUser", "addruser", "hash"), null)
+                .join().getId();
+
+        assertTrue(repository.exchangeLastLoginIpHash(id, new byte[]{1, 2}).join().isEmpty());
+        assertEquals(2, repository.exchangeLastLoginIpHash(id, new byte[]{3}).join().orElseThrow().length);
+        assertEquals(3, repository.exchangeLastLoginIpHash(id, new byte[]{4}).join().orElseThrow()[0]);
     }
 }
