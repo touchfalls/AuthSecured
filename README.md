@@ -104,6 +104,8 @@ target different server APIs.
 | `/changepassword` | `/changepassword <old> <new>` | everyone |
 | `/logout` | `/logout` | everyone |
 | `/authstatus` | `/authstatus` | everyone |
+| `/sessions` | `/sessions [revoke]` shows or ends your saved sessions | everyone |
+| `/2fa` | `/2fa enable`, `/2fa confirm <code>`, `/2fa disable <code>`, `/2fa status`; after `/login`, `/2fa <code>` finishes the login | everyone |
 | `/authadmin status` | show service and database state | `authsecured.admin.status` / level 2 |
 | `/authadmin doctor` | run configuration diagnostics | `authsecured.admin.doctor` / level 3 |
 | `/authadmin reload` | reload runtime configuration | `authsecured.admin.reload` / level 3 |
