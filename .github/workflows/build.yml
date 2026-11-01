@@ -33,7 +33,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
       - name: Run tests and build both artifacts
         run: ./gradlew $GRADLE_TOOLCHAINS clean test :platform-paper:build :platform-fabric:build
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: authsecured-${{ github.sha }}
           path: |
