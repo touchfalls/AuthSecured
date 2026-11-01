@@ -30,7 +30,7 @@ jobs:
           java-version: |
             26
             21
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Run tests and build both artifacts
         run: ./gradlew $GRADLE_TOOLCHAINS clean test :platform-paper:build :platform-fabric:build
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -70,6 +70,6 @@ jobs:
           java-version: |
             26
             21
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Build and test the Fabric artifact
         run: ./gradlew $GRADLE_TOOLCHAINS :platform-fabric:clean :platform-fabric:build -Pminecraft_version=${{ matrix.minecraft }}
