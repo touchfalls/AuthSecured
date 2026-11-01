@@ -5,7 +5,7 @@ plugins {
 dependencies {
     implementation(project(":core"))
 
-    implementation("com.zaxxer:HikariCP:6.3.3")
+    implementation("com.zaxxer:HikariCP:7.1.0")
     implementation("org.postgresql:postgresql:42.7.13")
     implementation("org.xerial:sqlite-jdbc:3.53.4.0")
     implementation("org.flywaydb:flyway-core:10.22.0")
