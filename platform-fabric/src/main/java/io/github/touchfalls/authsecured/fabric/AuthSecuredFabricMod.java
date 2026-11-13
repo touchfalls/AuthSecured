@@ -270,6 +270,27 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
                 && (command == null || !isAllowedCommand(command));
     }
 
+    /**
+     * True when a connection under this name would replace a logged-in player who is connected from
+     * another address. The name is compared without case: "sTeve" has another UUID but looks like
+     * "Steve". An online-mode server lets vanilla replace the player, since Mojang proved the identity.
+     */
+    public boolean isForeignReplacement(MinecraftServer server, String name, SocketAddress newAddress) {
+        if (!initialized || name == null || platform.isOnlineMode()) return false;
+        String address = extractAddress(newAddress);
+        for (ServerPlayer online : server.getPlayerList().getPlayers()) {
+            if (online.getName().getString().equalsIgnoreCase(name) && isForeignReplacement(
+                    restrictionAdapter.isAuthenticated(online.getUUID()), playerAddresses.get(online.getUUID()), address)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean isForeignReplacement(boolean onlineAuthenticated, String onlineAddress, String newAddress) {
+        return onlineAuthenticated && onlineAddress != null && !onlineAddress.equals(newAddress);
+    }
+
     public boolean shouldBlockFlight(UUID uuid) {
         if (restrictionAdapter.isAuthenticated(uuid)) {
             return false;

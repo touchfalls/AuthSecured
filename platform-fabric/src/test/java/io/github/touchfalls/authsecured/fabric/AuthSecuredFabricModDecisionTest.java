@@ -34,6 +34,17 @@ class AuthSecuredFabricModDecisionTest {
     }
 
     @Test
+    void onlyALoggedInPlayerFromAnotherAddressIsProtectedFromReplacement() {
+        assertTrue(AuthSecuredFabricMod.isForeignReplacement(true, "192.0.2.1", "198.51.100.7"));
+        // A reconnect after a dropped connection comes from the same address.
+        assertFalse(AuthSecuredFabricMod.isForeignReplacement(true, "192.0.2.1", "192.0.2.1"));
+        // Someone who never logged in holds no claim to the name.
+        assertFalse(AuthSecuredFabricMod.isForeignReplacement(false, "192.0.2.1", "198.51.100.7"));
+        assertFalse(AuthSecuredFabricMod.isForeignReplacement(true, null, "198.51.100.7"));
+        assertTrue(AuthSecuredFabricMod.isForeignReplacement(true, "192.0.2.1", null));
+    }
+
+    @Test
     void authenticatedPlayerBypassesEveryRestrictionEvenUninitialized() {
         AuthSecuredFabricMod mod = new AuthSecuredFabricMod();
         UUID uuid = UUID.randomUUID();
