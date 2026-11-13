@@ -1,7 +1,7 @@
 plugins {
     java
     id("com.gradleup.shadow") version "9.6.1" apply false
-    id("net.fabricmc.fabric-loom") version "1.17.19" apply false
+    id("net.fabricmc.fabric-loom") version "1.19.4" apply false
 }
 
 allprojects {
