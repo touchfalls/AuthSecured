@@ -14,11 +14,19 @@ class FabricMetadataTest {
         int javaRelease = minecraft.startsWith("26.") ? 25 : 21;
         String metadata;
         String mixins;
-        try (var mod = getClass().getClassLoader().getResourceAsStream("fabric.mod.json");
-             var mixin = getClass().getClassLoader().getResourceAsStream("authsecured.mixins.json")) {
-            assertNotNull(mod);
+        // Inside Fabric Loader every mod on the class path has a fabric.mod.json; pick ours.
+        metadata = java.util.Collections.list(getClass().getClassLoader().getResources("fabric.mod.json")).stream()
+                .map(url -> {
+                    try (var in = url.openStream()) {
+                        return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                    } catch (java.io.IOException e) {
+                        throw new java.io.UncheckedIOException(e);
+                    }
+                })
+                .filter(json -> json.contains("\"id\": \"authsecured\""))
+                .findFirst().orElseThrow();
+        try (var mixin = getClass().getClassLoader().getResourceAsStream("authsecured.mixins.json")) {
             assertNotNull(mixin);
-            metadata = new String(mod.readAllBytes(), StandardCharsets.UTF_8);
             mixins = new String(mixin.readAllBytes(), StandardCharsets.UTF_8);
         }
         assertTrue(metadata.contains("\"minecraft\": \"=" + minecraft + "\""));

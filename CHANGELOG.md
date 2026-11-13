@@ -24,6 +24,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - CI runs the repositories and the Flyway migrations against PostgreSQL.
+- Every Fabric build now applies the mixins to the real game classes in a test, so a handler that
+  a Minecraft version renamed fails the build instead of the server.
+- Pushing a `v*` tag builds every artifact and publishes the GitHub and Modrinth releases.
 
 ## [1.3.0] - 2026-10-30
 
