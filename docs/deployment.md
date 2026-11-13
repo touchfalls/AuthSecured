@@ -19,8 +19,11 @@ Internet ──► Proxy (optional) ──► Paper/Purpur plugin or Fabric serv
 
 ## Recommended Environment Variables
 - `AUTHSECURED_DB_PASSWORD`: PostgreSQL database password
-- `AUTHSECURED_IP_SECRET`: long random server secret for IP HMAC hashing; keep it
-  stable or existing IP-bound sessions will be invalidated
+- `AUTHSECURED_IP_SECRET`: long random server secret for IP HMAC hashing and for
+  encrypting two-factor secrets; keep it stable and backed up. If it changes,
+  IP-bound sessions end and players with `/2fa` enabled cannot log in until an
+  administrator runs `/authadmin resetpassword` for them. Without the variable the
+  secret is the generated `ip-secret.key` file, which needs the same care.
 - `AUTHSECURED_REDIS_URI`: Optional Redis connection string
 - `AUTHSECURED_DISCORD_WEBHOOK`: Optional Discord webhook for failed-login alerts
 - `AUTHSECURED_TELEGRAM_BOT_TOKEN`: Optional Telegram bot token

@@ -105,7 +105,7 @@ messages:
   admin-doctor-redis-ok: "Stockage des limites de tentatives"
   admin-doctor-redis-fail: "Redis est indisponible ; les limites sont locales"
   admin-doctor-ip-secret-ok: "Secret de hachage des adresses IP"
-  admin-doctor-ip-secret-fail: "AUTHSECURED_IP_SECRET est manquant"
+  admin-doctor-ip-secret-fail: "Le secret de hachage des IP est un fichier propre à ce serveur, mais une base de données partagée ou Redis est activé. Définissez le même AUTHSECURED_IP_SECRET sur tous les serveurs, sinon les sessions, les limites par IP et les codes à deux facteurs ne fonctionnent que sur le serveur qui les a créés."
   admin-doctor-session-ip-ok: "Liaison des sessions à l'IP"
   admin-doctor-session-ip-fail: "Les sessions ne sont pas liées à l'IP du joueur sur un serveur en mode hors ligne : quiconque se connecte avec le même pseudo en hérite. Définissez session.verify-ip: true."
   admin-doctor-argon2-ok: "Coût du hachage des mots de passe"

@@ -10,8 +10,10 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Authenticator (TOTP) setup and the second step of login. Every wrong code counts against the same
@@ -40,6 +42,7 @@ public class TwoFactorService {
     private final LoginService loginService;
     private final int maxFailedAttempts;
     private final long lockDurationSeconds;
+    private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
 
     public TwoFactorService(AccountRepository accountRepository, TotpRepository totpRepository,
                             TotpService totpService, RateLimitService rateLimitService,
@@ -140,6 +143,19 @@ public class TwoFactorService {
     /** Runs {@code action} after the same IP, account and lock checks a password attempt goes through. */
     private CompletableFuture<Outcome> withAccount(UUID playerUuid, byte[] ipHash, Action action) {
         if (ipHash == null || ipHash.length == 0) return done(Status.ERROR);
+        // One check per player at a time, as for passwords: the lock is read before the code is
+        // compared and written after it, so parallel guesses would all pass a stale "not locked".
+        if (!inFlight.add(playerUuid)) return done(Status.RATE_LIMITED);
+        CompletableFuture<Outcome> result;
+        try {
+            result = checkedAccount(playerUuid, ipHash, action);
+        } catch (RuntimeException exception) {
+            result = CompletableFuture.failedFuture(exception);
+        }
+        return result.whenComplete((outcome, error) -> inFlight.remove(playerUuid));
+    }
+
+    private CompletableFuture<Outcome> checkedAccount(UUID playerUuid, byte[] ipHash, Action action) {
         return rateLimitService.isIpRateLimited(ipHash).thenCompose(ipLimited -> {
             if (ipLimited) return done(Status.RATE_LIMITED);
             return accountRepository.findByUuid(playerUuid).thenCompose(optional -> {

@@ -105,7 +105,7 @@ messages:
   admin-doctor-redis-ok: "Almacenamiento de límites de intentos"
   admin-doctor-redis-fail: "Redis no está disponible; los límites son locales"
   admin-doctor-ip-secret-ok: "Secreto de hash de direcciones IP"
-  admin-doctor-ip-secret-fail: "Falta AUTHSECURED_IP_SECRET"
+  admin-doctor-ip-secret-fail: "El secreto de hash de IP es un archivo propio de este servidor, pero hay una base de datos compartida o Redis. Define el mismo AUTHSECURED_IP_SECRET en todos los servidores; si no, las sesiones, los límites por IP y los códigos de dos factores solo funcionan en el servidor que los creó."
   admin-doctor-session-ip-ok: "Vinculación de sesiones a la IP"
   admin-doctor-session-ip-fail: "Las sesiones no están vinculadas a la IP del jugador en un servidor en modo offline, así que cualquiera que entre con el mismo nombre las hereda. Establece session.verify-ip: true."
   admin-doctor-argon2-ok: "Coste del hash de contraseñas"

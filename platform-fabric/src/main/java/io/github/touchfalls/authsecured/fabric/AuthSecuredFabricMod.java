@@ -258,8 +258,7 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
         }
         String normalized = command.startsWith("/") ? command : "/" + command;
         normalized = normalized.strip().toLowerCase(Locale.ROOT).split("\\s+", 2)[0];
-        List<String> defaults = List.of("/login", "/l", "/register", "/reg", "/changepassword", "/cp", "/2fa");
-        return container.getConfigManager().getAllowedCommands(defaults)
+        return container.getConfigManager().getAllowedCommands()
                 .stream()
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .anyMatch(normalized::equals);
@@ -278,6 +277,10 @@ public final class AuthSecuredFabricMod implements DedicatedServerModInitializer
         DependencyContainer currentContainer = container;
         return !initialized || currentContainer == null
                 || !currentContainer.getConfigManager().getBoolean("restrictions.allow-flight", false);
+    }
+
+    public void runOnServerThread(Runnable task) {
+        platform.runTaskOnMainThread(task);
     }
 
     public String message(String key, String fallback) {

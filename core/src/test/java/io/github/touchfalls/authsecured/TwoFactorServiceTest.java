@@ -161,6 +161,22 @@ class TwoFactorServiceTest {
     }
 
     @Test
+    void aSecondCodeIsRefusedWhileTheFirstIsStillBeingChecked() {
+        enable();
+        CompletableFuture<Boolean> slow = new CompletableFuture<>();
+        when(limits.isIpRateLimited(any())).thenReturn(slow).thenReturn(CompletableFuture.completedFuture(false));
+
+        CompletableFuture<TwoFactorService.Outcome> first = service.verifyLogin(uuid, "123456", ip);
+        assertEquals(TwoFactorService.Status.RATE_LIMITED, service.verifyLogin(uuid, "654321", ip).join().status());
+        verify(accounts, never()).incrementFailedAttemptsAtomic(any(), anyInt(), anyLong(), any());
+
+        slow.complete(false);
+        assertEquals(TwoFactorService.Status.INVALID_CODE, first.join().status());
+        assertEquals(TwoFactorService.Status.INVALID_CODE, service.verifyLogin(uuid, "654321", ip).join().status(),
+                "the guard is released once the first check ends");
+    }
+
+    @Test
     void limitsAndLocksStopTheCheckBeforeAnyCodeIsTried() {
         enable();
         when(limits.isAccountRateLimited("player")).thenReturn(CompletableFuture.completedFuture(true));
