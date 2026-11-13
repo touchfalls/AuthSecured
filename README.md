@@ -61,6 +61,8 @@ Build every supported Fabric target:
 
 GitHub Actions runs the same tests and builds for every push and pull request,
 and builds every Fabric target listed in `build_fabric_matrix.sh` in parallel.
+Pushing a `v<version>` tag runs the Release workflow, which builds all of them and
+publishes the GitHub and Modrinth releases.
 
 Build one Fabric target:
 
