@@ -11,6 +11,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class RedisRateLimitStore implements RateLimitStore {
 
@@ -27,7 +28,8 @@ public class RedisRateLimitStore implements RateLimitStore {
     private final PlatformLogger logger;
     private final Executor executor;
     private final boolean required;
-    private final AtomicBoolean degraded = new AtomicBoolean();
+    private final long retryMillis;
+    private final AtomicLong degradedUntilMillis = new AtomicLong();
     private final AtomicBoolean failureLogged = new AtomicBoolean();
 
     public RedisRateLimitStore(JedisPool jedisPool, PlatformLogger logger) {
@@ -40,6 +42,13 @@ public class RedisRateLimitStore implements RateLimitStore {
 
     public RedisRateLimitStore(JedisPool jedisPool, PlatformLogger logger, Executor executor,
                                boolean required) {
+        this(jedisPool, logger, executor, required, 60_000);
+    }
+
+    /** @param retryMillis how long local limits are used after a failure before Redis is tried again */
+    public RedisRateLimitStore(JedisPool jedisPool, PlatformLogger logger, Executor executor,
+                               boolean required, long retryMillis) {
+        this.retryMillis = retryMillis;
         this.jedisPool = jedisPool;
         this.fallbackStore = new MemoryRateLimitStore();
         this.logger = logger;
@@ -47,11 +56,11 @@ public class RedisRateLimitStore implements RateLimitStore {
         this.required = required;
     }
 
-    public boolean isDegraded() { return degraded.get(); }
+    public boolean isDegraded() { return System.currentTimeMillis() < degradedUntilMillis.get(); }
 
     @Override
     public CompletableFuture<Integer> incrementAndGet(String key, long windowSeconds) {
-        if (jedisPool == null || degraded.get()) {
+        if (jedisPool == null || isDegraded()) {
             return required ? unavailable() : fallbackStore.incrementAndGet(key, windowSeconds);
         }
         return withFallback(CompletableFuture.supplyAsync(() -> {
@@ -67,7 +76,7 @@ public class RedisRateLimitStore implements RateLimitStore {
 
     @Override
     public CompletableFuture<Boolean> isLocked(String lockKey) {
-        if (jedisPool == null || degraded.get()) {
+        if (jedisPool == null || isDegraded()) {
             return required ? unavailable() : fallbackStore.isLocked(lockKey);
         }
         return withFallback(CompletableFuture.supplyAsync(() -> {
@@ -81,7 +90,7 @@ public class RedisRateLimitStore implements RateLimitStore {
 
     @Override
     public CompletableFuture<Void> setLock(String lockKey, long lockSeconds) {
-        if (jedisPool == null || degraded.get()) {
+        if (jedisPool == null || isDegraded()) {
             return required ? unavailable() : fallbackStore.setLock(lockKey, lockSeconds);
         }
         return withFallback(CompletableFuture.runAsync(() -> {
@@ -95,7 +104,7 @@ public class RedisRateLimitStore implements RateLimitStore {
 
     @Override
     public CompletableFuture<Void> reset(String key) {
-        if (jedisPool == null || degraded.get()) {
+        if (jedisPool == null || isDegraded()) {
             return required ? unavailable() : fallbackStore.reset(key);
         }
         return withFallback(CompletableFuture.runAsync(() -> {
@@ -109,14 +118,19 @@ public class RedisRateLimitStore implements RateLimitStore {
 
     private <T> CompletableFuture<T> withFallback(CompletableFuture<T> operation,
                                                    Supplier<CompletableFuture<T>> fallback) {
-        return operation.orTimeout(5, TimeUnit.SECONDS).exceptionallyCompose(error -> {
+        return operation.orTimeout(5, TimeUnit.SECONDS).whenComplete((result, error) -> {
+            if (error == null && failureLogged.compareAndSet(true, false)) {
+                logger.info("Redis is reachable again; shared rate limits are back in use.");
+            }
+        }).exceptionallyCompose(error -> {
             if (failureLogged.compareAndSet(false, true)) {
                 logger.severe(required
                         ? "Required Redis failed; authentication operations will be rejected. Connection details are hidden."
-                        : "Redis failed; rate limits use local memory until restart. Connection details are hidden.");
+                        : "Redis failed; rate limits are local to this server until it answers again "
+                        + "(retried every minute). Connection details are hidden.");
             }
             if (required) return unavailable();
-            degraded.set(true);
+            degradedUntilMillis.set(System.currentTimeMillis() + retryMillis);
             return fallback.get();
         });
     }

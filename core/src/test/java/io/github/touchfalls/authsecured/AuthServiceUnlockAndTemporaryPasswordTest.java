@@ -35,7 +35,7 @@ class AuthServiceUnlockAndTemporaryPasswordTest {
         AuthService service = new AuthService(mock(RegistrationService.class), login,
                 mock(PasswordService.class), mock(SessionService.class), security, accounts);
 
-        assertTrue(service.unlockAccount("Player").join());
+        assertTrue(service.unlockAccount("Player", null).join());
         // Without this, a player an admin just unlocked could still be told "too many attempts".
         verify(login).clearRateLimit("player");
     }
@@ -61,7 +61,7 @@ class AuthServiceUnlockAndTemporaryPasswordTest {
         AuthService service = new AuthService(mock(RegistrationService.class), login,
                 passwords, sessions, security, accounts);
 
-        TemporaryPasswordReset reset = service.issueTemporaryPassword("Player", 18, 900).join();
+        TemporaryPasswordReset reset = service.issueTemporaryPassword("Player", 18, 900, null).join();
         assertEquals(18, reset.copyPassword().length);
         // Lets the caller end the in-game authentication of the account owner.
         assertEquals(uuid, reset.getPlayerUuid());
@@ -79,11 +79,19 @@ class AuthServiceUnlockAndTemporaryPasswordTest {
         when(accounts.delete(uuid)).thenReturn(CompletableFuture.completedFuture(true));
         when(sessions.revokeAllSessionsForAccount(account.getId())).thenReturn(CompletableFuture.completedFuture(null));
 
-        AuthService service = new AuthService(mock(RegistrationService.class), mock(LoginService.class),
-                mock(PasswordService.class), sessions, mock(SecurityService.class), accounts);
+        SecurityService security = mock(SecurityService.class);
+        when(security.logSecurityEvent(any(), any(), any(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        UUID admin = UUID.randomUUID();
 
-        assertEquals(Optional.of(uuid), service.unregisterAccount("Player").join());
-        assertEquals(Optional.empty(), service.unregisterAccount("missing").join());
+        AuthService service = new AuthService(mock(RegistrationService.class), mock(LoginService.class),
+                mock(PasswordService.class), sessions, security, accounts);
+
+        assertEquals(Optional.of(uuid), service.unregisterAccount("Player", admin).join());
+        assertEquals(Optional.empty(), service.unregisterAccount("missing", admin).join());
         verify(sessions).revokeAllSessionsForAccount(account.getId());
+        // Deleting an account used to leave no trace of who did it, or that it happened at all.
+        verify(security).logSecurityEvent(null, SecurityEventType.ADMIN_ACTION, null,
+                "{\"actor\":\"" + admin + "\",\"unregistered\":\"player\"}");
     }
 }

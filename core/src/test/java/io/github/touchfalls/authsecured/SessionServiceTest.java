@@ -39,7 +39,7 @@ class SessionServiceTest {
         UUID playerUuid = UUID.randomUUID();
         byte[] expectedIpHash = {1, 2, 3};
         Session session = Session.create(1L, playerUuid, expectedIpHash, "server1", 60);
-        Mockito.when(repository.findActiveByPlayerUuid(playerUuid))
+        Mockito.when(repository.findRestorableByPlayerUuid(Mockito.eq(playerUuid), Mockito.any()))
                 .thenReturn(CompletableFuture.completedFuture(java.util.Optional.of(session)));
 
         SessionService service = new SessionService(repository, true, true, 60, true);

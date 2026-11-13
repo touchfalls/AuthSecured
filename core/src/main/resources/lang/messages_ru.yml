@@ -105,7 +105,7 @@ messages:
   admin-doctor-redis-ok: "Хранилище ограничений попыток"
   admin-doctor-redis-fail: "Redis недоступен; ограничения попыток действуют только на этом сервере"
   admin-doctor-ip-secret-ok: "Секрет хеширования IP-адресов"
-  admin-doctor-ip-secret-fail: "Переменная AUTHSECURED_IP_SECRET не задана"
+  admin-doctor-ip-secret-fail: "Секрет хеширования IP хранится в файле этого сервера, но включена общая база данных или Redis. Задайте одинаковый AUTHSECURED_IP_SECRET на всех серверах, иначе сессии, лимиты по IP и коды двухфакторной аутентификации работают только на том сервере, где созданы."
   admin-doctor-session-ip-ok: "Привязка сессий к IP"
   admin-doctor-session-ip-fail: "Сессии не привязаны к IP игрока на сервере в offline-режиме: любой, кто зайдет под тем же ником, получит сессию. Установите session.verify-ip: true."
   admin-doctor-argon2-ok: "Стоимость хеширования паролей"

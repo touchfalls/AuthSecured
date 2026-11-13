@@ -316,6 +316,14 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
 
     private Void twoFactorFailed(UUID playerUuid, Throwable throwable) {
         logFailure("Two-factor command", throwable);
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof javax.crypto.AEADBadTagException) {
+                platform.getLogger().severe("A stored two-factor secret cannot be decrypted: AUTHSECURED_IP_SECRET "
+                        + "or ip-secret.key differs from the one it was saved with. Restore that secret, or run "
+                        + "/authadmin resetpassword for the affected players.");
+                break;
+            }
+        }
         platform.runTaskForPlayer(playerUuid, () -> platform.sendMessage(playerUuid, localizationManager.getMessage("messages.error")));
         return null;
     }

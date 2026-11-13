@@ -78,7 +78,10 @@ public class SessionService {
         if (!persistent) {
             return initialization.thenApply(ignored -> isValid(volatileSessions.get(playerUuid), playerIpHash));
         }
-        return sessionRepository.findActiveByPlayerUuid(playerUuid)
+        if (verifyIp && (playerIpHash == null || playerIpHash.length == 0)) {
+            return CompletableFuture.completedFuture(false);
+        }
+        return sessionRepository.findRestorableByPlayerUuid(playerUuid, verifyIp ? playerIpHash : null)
                 .thenApply(opt -> opt.map(session -> isValid(session, playerIpHash)).orElse(false));
     }
 

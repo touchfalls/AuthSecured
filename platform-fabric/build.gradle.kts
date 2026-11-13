@@ -63,6 +63,8 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.3")
+    // Runs the tests inside Fabric Loader, so MixinAuditTest can apply the mixins to the real game classes.
+    testImplementation("net.fabricmc:fabric-loader-junit:${property("fabric_loader_version")}")
 }
 
 java {
@@ -161,6 +163,7 @@ if (minecraftVersion.startsWith("26.")) {
 tasks.test {
     useJUnitPlatform()
     systemProperty("authsecured.minecraftVersion", minecraftVersion)
+    systemProperty("fabric.side", "server")
 }
 
 val verifySQLiteDriverInShadowJar by tasks.registering {

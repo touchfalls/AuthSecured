@@ -66,10 +66,10 @@ public final class AuthAdminCommand implements TabExecutor {
             case "session" -> handleSession(sender, args);
             case "audit" -> handleAudit(sender, args);
             case "unlock" -> handlePlayerBoolean(sender, args, "unlock",
-                    target -> container.getAuthService().unlockAccount(target),
+                    target -> operations.unlock(target, actor(sender)),
                     "messages.admin-account-unlocked", "&aAccount unlocked.");
             case "unregister" -> handlePlayerBoolean(sender, args, "unregister",
-                    operations::unregister,
+                    target -> operations.unregister(target, actor(sender)),
                     "messages.admin-account-unregistered", "&aAccount unregistered.");
             case "resetpassword" -> handleTemporaryPassword(sender, args);
             default -> sendUsage(sender);
@@ -150,7 +150,7 @@ public final class AuthAdminCommand implements TabExecutor {
                             + "the password without writing it to the server log."));
             return;
         }
-        operations.issueTemporaryPassword(args[1]).whenComplete((reset, error) ->
+        operations.issueTemporaryPassword(args[1], actor(sender)).whenComplete((reset, error) ->
                 scheduler.schedule(sender, () -> {
                     if (error != null) {
                         sender.sendMessage(message("messages.admin-reset-failed",
@@ -186,6 +186,11 @@ public final class AuthAdminCommand implements TabExecutor {
             Arrays.fill(password, '\0');
             reset.destroy();
         }
+    }
+
+    /** Null for the console and RCON. */
+    private static java.util.UUID actor(CommandSender sender) {
+        return sender instanceof Player player ? player.getUniqueId() : null;
     }
 
     private void handlePlayerBoolean(CommandSender sender, String[] args, String usage,

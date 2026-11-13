@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Security
+- Only one authenticator code per player is checked at a time, as for passwords, so codes sent in
+  parallel cannot all pass before the account locks.
+- A saved session no longer logs in a suspended or permanently locked account.
+- Fabric: a frozen player is dismounted, pulled back and grounded on the server thread; the
+  network thread only drops the packet.
+- `/authadmin unregister` is recorded in the audit log, and `unlock`, `unregister` and
+  `resetpassword` record who ran them.
+
+- Fabric: command blocks, command minecarts, structure and jigsaw blocks and the difficulty
+  setting can no longer be changed before login (a connection under an operator's name could use
+  them on an offline-mode server). Books, signs, anvil renames, trades, beacons, recipe placement
+  and sprint or glide requests are dropped before login as well.
+- One address can hold at most half of the password-hashing queue at a time, so a flood of
+  connections from it no longer makes other players' logins fail with "server busy".
+- A warning is logged when the Redis connection is unencrypted and leaves the machine.
+- Fabric: a logged-in player is no longer kicked by a connection under the same name from
+  another address on an offline-mode server; the new connection is refused, as on Paper.
+
+### Fixed
+- Paper: on an online-mode server the owner can again take over their own connection from
+  another address; the duplicate-login guard only applies in offline mode.
+- A saved session is found by the player's address among all of their sessions, so logging in
+  from a second address no longer stops the automatic login from the first.
+- After a Redis failure the shared rate limits come back by themselves: Redis is tried again
+  every minute instead of staying on local limits until a restart.
+- `/authadmin doctor` described a shared database with a per-server secret as "secret is missing"
+  in every bundled language.
+- The log says so when a two-factor secret cannot be decrypted because the server secret changed.
+  The startup warnings and the deployment guide now say that the secret also protects two-factor
+  setups.
+
+### Changed
+- CI runs the repositories and the Flyway migrations against PostgreSQL.
+- Every Fabric build now applies the mixins to the real game classes in a test, so a handler that
+  a Minecraft version renamed fails the build instead of the server.
+- Pushing a `v*` tag builds every artifact and publishes the GitHub and Modrinth releases.
+
 ## [1.3.0] - 2026-10-30
 
 ### Added

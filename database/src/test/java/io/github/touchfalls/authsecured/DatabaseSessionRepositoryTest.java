@@ -92,6 +92,48 @@ class DatabaseSessionRepositoryTest {
     }
 
     @Test
+    void restoreMatchesTheAddressAmongAllSessionsAndSkipsSuspendedAccounts() throws Exception {
+        UUID playerUuid = UUID.randomUUID();
+        Long accountId = new SqliteAccountRepository(databaseManager.getDataSource(),
+                databaseManager.getDbExecutor()).save(Account.createNew(
+                playerUuid, "RestoreUser", "restoreuser", "hash"), null).join().getId();
+        byte[] home = {1, 1};
+        byte[] cafe = {2, 2};
+        Instant now = Instant.now();
+        Session older = new Session(UUID.randomUUID(), accountId, playerUuid, home, "server",
+                now.minusSeconds(60), now.plusSeconds(600), null);
+        Session newer = new Session(UUID.randomUUID(), accountId, playerUuid, cafe, "server",
+                now, now.plusSeconds(600), null);
+        repository.save(older).join();
+        repository.save(newer).join();
+
+        // The older session is not the newest one, but it is the one for this address.
+        assertEquals(older.getId(), repository.findRestorableByPlayerUuid(playerUuid, home).join().orElseThrow().getId());
+        assertEquals(newer.getId(), repository.findRestorableByPlayerUuid(playerUuid, null).join().orElseThrow().getId());
+        assertTrue(repository.findRestorableByPlayerUuid(playerUuid, new byte[]{9}).join().isEmpty());
+
+        setAccountStatus(accountId, "LOCKED", now.plusSeconds(900).toString());
+        assertTrue(repository.findRestorableByPlayerUuid(playerUuid, home).join().isPresent(),
+                "a timed lock from wrong passwords must not log the owner out");
+        setAccountStatus(accountId, "LOCKED", null);
+        assertTrue(repository.findRestorableByPlayerUuid(playerUuid, home).join().isEmpty());
+        setAccountStatus(accountId, "SUSPENDED", null);
+        assertTrue(repository.findRestorableByPlayerUuid(playerUuid, home).join().isEmpty());
+        assertTrue(repository.findActiveByPlayerUuid(playerUuid).join().isPresent(),
+                "logout still finds the sessions of a suspended account");
+    }
+
+    private void setAccountStatus(Long accountId, String status, String lockedUntil) throws Exception {
+        try (Connection connection = databaseManager.getDataSource().getConnection();
+             var statement = connection.prepareStatement("UPDATE accounts SET status = ?, locked_until = ? WHERE id = ?")) {
+            statement.setString(1, status);
+            statement.setString(2, lockedUntil);
+            statement.setLong(3, accountId);
+            statement.executeUpdate();
+        }
+    }
+
+    @Test
     void deleteAllClosesConnectionsAndRemovesStoredSessions() {
         repository.deleteAll().join();
         assertEquals(0, databaseManager.getActiveConnections());
