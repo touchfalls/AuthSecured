@@ -33,6 +33,23 @@ class RedisRateLimitStoreTest {
     }
 
     @Test
+    void redisIsUsedAgainOnceItAnswers() {
+        JedisPool pool = org.mockito.Mockito.mock(JedisPool.class);
+        Jedis jedis = org.mockito.Mockito.mock(Jedis.class);
+        org.mockito.Mockito.when(pool.getResource())
+                .thenThrow(new IllegalStateException("offline")).thenReturn(jedis);
+        org.mockito.Mockito.when(jedis.eval(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.<List<String>>any(),
+                org.mockito.ArgumentMatchers.<List<String>>any())).thenReturn(7L);
+        // Retry at once; the default waits a minute between attempts.
+        RedisRateLimitStore store = new RedisRateLimitStore(pool, DUMMY_LOGGER, Runnable::run, false, 0);
+
+        assertEquals(1, store.incrementAndGet("account", 60).join(), "local count while Redis is down");
+        assertEquals(7, store.incrementAndGet("account", 60).join(), "the shared count once it is back");
+        assertFalse(store.isDegraded());
+    }
+
+    @Test
     @DisplayName("Increment and its expiry run as one atomic Lua script, not two separate calls")
     void incrementUsesOneAtomicScriptInsteadOfIncrThenExpire() {
         JedisPool pool = org.mockito.Mockito.mock(JedisPool.class);

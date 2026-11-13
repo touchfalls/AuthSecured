@@ -13,6 +13,13 @@ All notable changes to this project will be documented in this file.
 - `/authadmin unregister` is recorded in the audit log, and `unlock`, `unregister` and
   `resetpassword` record who ran them.
 
+- Fabric: command blocks, command minecarts, structure and jigsaw blocks and the difficulty
+  setting can no longer be changed before login (a connection under an operator's name could use
+  them on an offline-mode server). Books, signs, anvil renames, trades, beacons, recipe placement
+  and sprint or glide requests are dropped before login as well.
+- One address can hold at most half of the password-hashing queue at a time, so a flood of
+  connections from it no longer makes other players' logins fail with "server busy".
+- A warning is logged when the Redis connection is unencrypted and leaves the machine.
 - Fabric: a logged-in player is no longer kicked by a connection under the same name from
   another address on an offline-mode server; the new connection is refused, as on Paper.
 
@@ -21,6 +28,8 @@ All notable changes to this project will be documented in this file.
   another address; the duplicate-login guard only applies in offline mode.
 - A saved session is found by the player's address among all of their sessions, so logging in
   from a second address no longer stops the automatic login from the first.
+- After a Redis failure the shared rate limits come back by themselves: Redis is tried again
+  every minute instead of staying on local limits until a restart.
 - `/authadmin doctor` described a shared database with a per-server secret as "secret is missing"
   in every bundled language.
 - The log says so when a two-factor secret cannot be decrypted because the server secret changed.

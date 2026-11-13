@@ -135,6 +135,46 @@ public abstract class ServerGamePacketListenerImplMixin {
         }
     }
 
+    // The handlers below share one callback each; none of them needs its packet. "require" is the
+    // number of handlers listed: the default (1) would be satisfied by any one of them, and a
+    // handler renamed by a future version would silently stop being covered.
+
+    /**
+     * Operator tools that run commands or rewrite the world without the command packet. On an
+     * offline-mode server a connection under an operator's name could use them before logging in.
+     */
+    @Inject(method = {"handleSetCommandBlock", "handleSetCommandMinecart", "handleSetStructureBlock",
+            "handleSetJigsawBlock", "handleJigsawGenerate", "handleChangeDifficulty"},
+            at = @At("HEAD"), cancellable = true, require = 6)
+    private void authsecured$blockOperatorTools(CallbackInfo callback) {
+        if (restricted("restrictions.block-commands", true)) {
+            callback.cancel();
+        }
+    }
+
+    @Inject(method = {"handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handlePlaceRecipe"},
+            at = @At("HEAD"), cancellable = true, require = 4)
+    private void authsecured$blockContainerActions(CallbackInfo callback) {
+        if (restricted("restrictions.block-inventory", true)) {
+            callback.cancel();
+        }
+    }
+
+    @Inject(method = {"handleEditBook", "handleSignUpdate"}, at = @At("HEAD"), cancellable = true, require = 2)
+    private void authsecured$blockTextEdits(CallbackInfo callback) {
+        if (restricted("restrictions.block-interactions", true)) {
+            callback.cancel();
+        }
+    }
+
+    /** Sprinting, leaving a bed, starting to glide, horse jumps. */
+    @Inject(method = "handlePlayerCommand", at = @At("HEAD"), cancellable = true)
+    private void authsecured$blockPlayerCommand(CallbackInfo callback) {
+        if (restricted("restrictions.freeze-player", true)) {
+            callback.cancel();
+        }
+    }
+
     // require stays at the default (1): if a future version renames these handlers the
     // mod must fail to load instead of silently letting pre-login commands through.
     @Inject(method = "handleChatCommand", at = @At("HEAD"), cancellable = true)
