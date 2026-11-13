@@ -80,8 +80,9 @@ server checklist is in [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md).
 - [ ] Config and database file permissions, and plaintext webhook and bot tokens in `config.yml`.
 - [ ] Audit events defined but never written (`LOGIN_FAILURE`, `ACCOUNT_LOCKED`, `ADMIN_ACTION`,
       `SESSION_REVOKED`); audit write errors are swallowed.
-- [ ] Tests: mixin parity across the 17 Fabric targets, concurrent registration on a real PostgreSQL
-      (Testcontainers), Paper and Fabric restriction parity.
+- [x] Tests: mixin parity across the 17 Fabric targets (`MixinAuditTest`); concurrent registration on a real
+      PostgreSQL (`PostgresIntegrationTest`, runs in CI).
+- [ ] Tests: Paper and Fabric restriction parity.
 
 ### Ideas not started
 - [ ] Bot protection before registration (connection rate, challenge).

@@ -77,6 +77,53 @@ class PostgresIntegrationTest {
     }
 
     @Test
+    void concurrentRegistrationsCannotExceedThePerIpLimit() {
+        // The database outlives the run, so the address must be new every time.
+        byte[] ipHash = java.util.UUID.randomUUID().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        List<java.util.concurrent.CompletableFuture<Account>> saves = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            String name = "ip" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            saves.add(accounts.save(Account.createNew(UUID.randomUUID(), name, name, "hash"), ipHash, 3));
+        }
+
+        long saved = saves.stream().filter(save -> {
+            try {
+                save.join();
+                return true;
+            } catch (java.util.concurrent.CompletionException e) {
+                assertInstanceOf(io.github.touchfalls.authsecured.ports.AccountLimitExceededException.class,
+                        e.getCause(), e.toString());
+                return false;
+            }
+        }).count();
+
+        assertEquals(3, saved);
+        assertEquals(3L, accounts.countAccountsByIpHash(ipHash).join());
+    }
+
+    @Test
+    void concurrentRegistrationsOfOneNameCreateOneAccount() {
+        String name = "dup" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        List<java.util.concurrent.CompletableFuture<Account>> saves = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            saves.add(accounts.save(Account.createNew(UUID.randomUUID(), name, name, "hash"), new byte[]{9}, 100));
+        }
+
+        long saved = saves.stream().filter(save -> {
+            try {
+                save.join();
+                return true;
+            } catch (java.util.concurrent.CompletionException e) {
+                assertInstanceOf(io.github.touchfalls.authsecured.ports.DuplicateAccountException.class,
+                        e.getCause(), e.toString());
+                return false;
+            }
+        }).count();
+
+        assertEquals(1, saved);
+    }
+
+    @Test
     void sessionsAreRestoredByAddressCountedExtendedAndRevoked() {
         Account account = register();
         DatabaseSessionRepository sessions = new DatabaseSessionRepository(
