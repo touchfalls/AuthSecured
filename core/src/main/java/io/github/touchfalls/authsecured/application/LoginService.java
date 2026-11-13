@@ -13,6 +13,8 @@ import io.github.touchfalls.authsecured.util.UsernameNormalizer;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HexFormat;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -43,6 +45,10 @@ public class LoginService {
     private final PlatformLogger logger;
     private volatile TotpRepository totpRepository;
     private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
+    // Half of the Argon2 queue (PasswordService: 4 workers, 16 queued jobs each), so a flood of
+    // connections from one address cannot crowd every other player's login out of it.
+    static final int MAX_CHECKS_PER_ADDRESS = 32;
+    private final Map<String, Integer> inFlightByAddress = new ConcurrentHashMap<>();
 
     public LoginService(AccountRepository accountRepository, PasswordService passwordService,
                         RateLimitService rateLimitService, SessionService sessionService,
@@ -138,13 +144,24 @@ public class LoginService {
             return CompletableFuture.completedFuture(
                     rejected(AuthResult.RATE_LIMITED, UsernameNormalizer.normalize(username)));
         }
+        String address = ipHash == null ? "" : HexFormat.of().formatHex(ipHash);
+        if (inFlightByAddress.merge(address, 1, Integer::sum) > MAX_CHECKS_PER_ADDRESS) {
+            release(playerUuid, address);
+            return CompletableFuture.completedFuture(
+                    rejected(AuthResult.RATE_LIMITED, UsernameNormalizer.normalize(username)));
+        }
         try {
             return checkCredentials(playerUuid, username, password, ipHash)
-                    .whenComplete((result, error) -> inFlight.remove(playerUuid));
+                    .whenComplete((result, error) -> release(playerUuid, address));
         } catch (RuntimeException exception) {
-            inFlight.remove(playerUuid);
+            release(playerUuid, address);
             throw exception;
         }
+    }
+
+    private void release(UUID playerUuid, String address) {
+        inFlight.remove(playerUuid);
+        inFlightByAddress.computeIfPresent(address, (key, count) -> count > 1 ? count - 1 : null);
     }
 
     private CompletableFuture<CredentialCheck> checkCredentials(UUID playerUuid, String username,

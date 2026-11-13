@@ -66,12 +66,16 @@ server checklist is in [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md).
 ### Smaller gaps left open
 - [x] Duplicate-login guard on Fabric (mixin on the login path; not yet tried on a live server).
 - [ ] Remaining minor Paper events: arrow and XP pickup, book edit, held item change, entity targeting.
-- [ ] Remaining Fabric packets: `SetCarriedItem`, `RenameItem`, `SelectTrade`, `EditBook`, `SignUpdate`, `PlayerCommand`.
+- [x] Fabric packets: `RenameItem`, `SelectTrade`, `SetBeacon`, `PlaceRecipe`, `EditBook`, `SignUpdate`,
+      `PlayerCommand`, and the operator tools (command block and minecart, structure block, jigsaw, difficulty).
+- [ ] Fabric packets left open: `SetCarriedItem` (dropping it leaves the hotbar slot out of step with the
+      client), `PickItem*` and `ChangeGameMode` (their handler names differ between supported versions).
 - [ ] A new-address notice on session restore, and an alert to Discord or Telegram.
-- [ ] Argon2 queue exhaustion (an IP limit before hashing), a failure counter that decays over time, and a
-      bounded database queue.
-- [ ] Redis: warn on cleartext `redis://`, and tell the operator when the fallback to local limits happens.
-- [ ] Session restore ignores account lock or suspension, and only the newest persistent session is checked.
+- [x] Argon2 queue exhaustion: one address holds at most half of the hashing queue at a time.
+- [ ] A failure counter that decays over time, and a bounded database queue.
+- [x] Redis: warning for an unencrypted connection to another machine; after a failure Redis is tried again
+      every minute and the log says when it is back.
+- [x] Session restore skips suspended and permanently locked accounts and checks every session of the player.
 - [ ] Proxy forwarding is detected by a heuristic (shared local address), not by reading the proxy settings.
 - [ ] Config and database file permissions, and plaintext webhook and bot tokens in `config.yml`.
 - [ ] Audit events defined but never written (`LOGIN_FAILURE`, `ACCOUNT_LOCKED`, `ADMIN_ACTION`,

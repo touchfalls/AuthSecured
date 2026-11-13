@@ -202,8 +202,18 @@ public final class DependencyContainer implements AutoCloseable {
         String redisHost = configManager.getString("redis.host", "localhost");
         int redisPort = configManager.getInt("redis.port", 6379, 1, 65535);
         boolean required = configManager.getBoolean("redis.required", false);
+        boolean uri = redisUri != null && !redisUri.isBlank();
         try {
-            this.jedisPool = redisUri != null && !redisUri.isBlank()
+            if (uri ? redisUri.startsWith("redis://") && !AdminOperations.isLoopbackHost(java.net.URI.create(redisUri).getHost())
+                    : !AdminOperations.isLoopbackHost(redisHost)) {
+                logger.warning("The Redis connection is not encrypted and leaves this machine. "
+                        + "Use a rediss:// address in the redis.uri-env variable.");
+            }
+        } catch (IllegalArgumentException malformed) {
+            // JedisPool reports a malformed address below.
+        }
+        try {
+            this.jedisPool = uri
                     ? new JedisPool(redisUri)
                     : new JedisPool(redisHost, redisPort);
             try (var jedis = jedisPool.getResource()) {

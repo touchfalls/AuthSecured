@@ -153,6 +153,32 @@ class LoginServiceSecurityTest {
     }
 
     @Test
+    void oneAddressCannotHoldMoreThanItsShareOfRunningChecks() {
+        RateLimitService limits = mock(RateLimitService.class);
+        CompletableFuture<Boolean> stuck = new CompletableFuture<>();
+        when(limits.isIpRateLimited(any())).thenReturn(stuck);
+        LoginService service = new LoginService(mock(AccountRepository.class), mock(PasswordService.class),
+                limits, mock(SessionService.class), mock(SecurityService.class), 5, 900);
+        byte[] flooding = {1};
+
+        for (int i = 0; i < 32; i++) {
+            org.junit.jupiter.api.Assertions.assertFalse(service.verifyCredentials(
+                    UUID.randomUUID(), "Bot" + i, "guess".toCharArray(), flooding).isDone());
+        }
+        assertEquals(AuthResult.RATE_LIMITED, service.verifyCredentials(
+                UUID.randomUUID(), "Bot32", "guess".toCharArray(), flooding).join().result());
+        org.junit.jupiter.api.Assertions.assertFalse(service.verifyCredentials(
+                UUID.randomUUID(), "Player", "secret".toCharArray(), new byte[]{2}).isDone(),
+                "another address is not affected");
+
+        stuck.completeExceptionally(new IllegalStateException("done"));
+        when(limits.isIpRateLimited(any())).thenReturn(new CompletableFuture<>());
+        org.junit.jupiter.api.Assertions.assertFalse(service.verifyCredentials(
+                UUID.randomUUID(), "Bot33", "guess".toCharArray(), flooding).isDone(),
+                "the share is free again once the checks end");
+    }
+
+    @Test
     void loginFromADifferentAddressThanLastTimeIsReported() {
         for (byte[] previous : new byte[][]{new byte[]{9}, new byte[]{1}, null}) {
             AccountRepository accounts = mock(AccountRepository.class);
