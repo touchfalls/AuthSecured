@@ -55,6 +55,8 @@ public class PlayerConnectionListener implements Listener {
     @SuppressWarnings("deprecation")
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
         if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) return;
+        // Mojang proved the identity, so the owner may take over their own stale connection.
+        if (Bukkit.getOnlineMode()) return;
         for (Player online : Bukkit.getOnlinePlayers()) {
             boolean sameIdentity = online.getUniqueId().equals(event.getUniqueId())
                     || online.getName().equalsIgnoreCase(event.getName());

@@ -13,7 +13,12 @@ All notable changes to this project will be documented in this file.
 - `/authadmin unregister` is recorded in the audit log, and `unlock`, `unregister` and
   `resetpassword` record who ran them.
 
+- Fabric: a logged-in player is no longer kicked by a connection under the same name from
+  another address on an offline-mode server; the new connection is refused, as on Paper.
+
 ### Fixed
+- Paper: on an online-mode server the owner can again take over their own connection from
+  another address; the duplicate-login guard only applies in offline mode.
 - A saved session is found by the player's address among all of their sessions, so logging in
   from a second address no longer stops the automatic login from the first.
 - `/authadmin doctor` described a shared database with a per-server secret as "secret is missing"

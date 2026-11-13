@@ -64,7 +64,7 @@ server checklist is in [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md).
       the event before it is cancelled. Trade-off: a plugin at a later priority could undo the cancel.
 
 ### Smaller gaps left open
-- [ ] Duplicate-login guard on Fabric (needs a mixin on the login path).
+- [x] Duplicate-login guard on Fabric (mixin on the login path; not yet tried on a live server).
 - [ ] Remaining minor Paper events: arrow and XP pickup, book edit, held item change, entity targeting.
 - [ ] Remaining Fabric packets: `SetCarriedItem`, `RenameItem`, `SelectTrade`, `EditBook`, `SignUpdate`, `PlayerCommand`.
 - [ ] A new-address notice on session restore, and an alert to Discord or Telegram.
