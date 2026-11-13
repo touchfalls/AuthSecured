@@ -47,38 +47,38 @@ class AdminOperationsRevocationTest {
         UUID owner = UUID.randomUUID();
         TemporaryPasswordReset reset = new TemporaryPasswordReset(owner, "Temporary12345".toCharArray(),
                 Instant.now().plusSeconds(900));
-        when(authService.issueTemporaryPassword(eq("Player"), anyInt(), anyLong()))
+        when(authService.issueTemporaryPassword(eq("Player"), anyInt(), anyLong(), any()))
                 .thenReturn(CompletableFuture.completedFuture(reset));
 
-        assertSame(reset, operations.issueTemporaryPassword("Player").join());
+        assertSame(reset, operations.issueTemporaryPassword("Player", null).join());
         verify(commandExecutor).revokeAuthentication(eq(owner), eq("messages.admin-password-reset-notice"), anyString());
     }
 
     @Test
     void unknownAccountForTemporaryPasswordRevokesNothing() {
-        when(authService.issueTemporaryPassword(eq("Nobody"), anyInt(), anyLong()))
+        when(authService.issueTemporaryPassword(eq("Nobody"), anyInt(), anyLong(), any()))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
-        assertNull(operations.issueTemporaryPassword("Nobody").join());
+        assertNull(operations.issueTemporaryPassword("Nobody", null).join());
         verify(commandExecutor, never()).revokeAuthentication(any(), any(), any());
     }
 
     @Test
     void unregisterEndsTheAuthenticationOfTheDeletedAccountOwner() {
         UUID owner = UUID.randomUUID();
-        when(authService.unregisterAccount("Player"))
+        when(authService.unregisterAccount("Player", null))
                 .thenReturn(CompletableFuture.completedFuture(Optional.of(owner)));
 
-        assertTrue(operations.unregister("Player").join());
+        assertTrue(operations.unregister("Player", null).join());
         verify(commandExecutor).revokeAuthentication(eq(owner), eq("messages.admin-unregistered-notice"), anyString());
     }
 
     @Test
     void unregisterOfAnUnknownAccountRevokesNothing() {
-        when(authService.unregisterAccount("Nobody"))
+        when(authService.unregisterAccount("Nobody", null))
                 .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 
-        assertFalse(operations.unregister("Nobody").join());
+        assertFalse(operations.unregister("Nobody", null).join());
         verify(commandExecutor, never()).revokeAuthentication(any(), any(), any());
     }
 }

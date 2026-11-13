@@ -23,12 +23,6 @@ public class PlayerCommandListener implements Listener {
     private record AllowedCommands(List<String> source, Set<String> commands) {}
     private volatile AllowedCommands allowed = new AllowedCommands(List.of(), Set.of());
 
-    private static final List<String> DEFAULT_ALLOWED = List.of(
-            "/login", "/l",
-            "/register", "/reg",
-            "/changepassword", "/cp", "/2fa"
-    );
-
     public PlayerCommandListener(PlayerRestrictionManager restrictionManager, ConfigManager configManager) {
         this.restrictionManager = restrictionManager;
         this.configManager = configManager;
@@ -83,7 +77,7 @@ public class PlayerCommandListener implements Listener {
     }
 
     private Set<String> allowedCommands() {
-        List<String> source = configManager.getAllowedCommands(DEFAULT_ALLOWED);
+        List<String> source = configManager.getAllowedCommands();
         AllowedCommands current = allowed;
         if (!source.equals(current.source())) {
             // Rebuilt only after a reload changed the list, not on every command or tab request.

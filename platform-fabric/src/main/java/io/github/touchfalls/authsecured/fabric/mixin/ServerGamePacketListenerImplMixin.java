@@ -39,24 +39,26 @@ public abstract class ServerGamePacketListenerImplMixin {
             return;
         }
         callback.cancel();
-        if (player.isPassenger()) {
-            player.stopRiding();
-        }
-        // The client predicts its own movement, so ignoring the packet alone would let the
-        // player walk around locally. Pull it back to the server position immediately.
-        if (packet.hasPosition() && awaitingPositionFromClient == null
-                && player.distanceToSqr(packet.getX(player.getX()), packet.getY(player.getY()),
-                packet.getZ(player.getZ())) > 1.0E-6) {
-            ((ServerGamePacketListenerImpl) (Object) this).teleport(player.getX(), player.getY(), player.getZ(),
-                    packet.getYRot(player.getYRot()), packet.getXRot(player.getXRot()));
-        }
+        onServerThread(() -> {
+            if (player.isPassenger()) {
+                player.stopRiding();
+            }
+            // The client predicts its own movement, so ignoring the packet alone would let the
+            // player walk around locally. Pull it back to the server position immediately.
+            if (packet.hasPosition() && awaitingPositionFromClient == null
+                    && player.distanceToSqr(packet.getX(player.getX()), packet.getY(player.getY()),
+                    packet.getZ(player.getZ())) > 1.0E-6) {
+                ((ServerGamePacketListenerImpl) (Object) this).teleport(player.getX(), player.getY(), player.getZ(),
+                        packet.getYRot(player.getYRot()), packet.getXRot(player.getXRot()));
+            }
+        });
     }
 
     @Inject(method = "handleMoveVehicle", at = @At("HEAD"), cancellable = true)
     private void authsecured$blockVehicleMovement(ServerboundMoveVehiclePacket packet, CallbackInfo callback) {
         if (restricted("restrictions.freeze-player", true)) {
-            player.stopRiding();
             callback.cancel();
+            onServerThread(player::stopRiding);
         }
     }
 
@@ -78,8 +80,8 @@ public abstract class ServerGamePacketListenerImplMixin {
     private void authsecured$blockFlight(ServerboundPlayerAbilitiesPacket packet, CallbackInfo callback) {
         AuthSecuredFabricMod mod = AuthSecuredFabricMod.getInstance();
         if (mod != null && mod.shouldBlockFlight(player.getUUID())) {
-            player.getAbilities().flying = false;
             callback.cancel();
+            onServerThread(() -> player.getAbilities().flying = false);
         }
     }
 
@@ -152,6 +154,20 @@ public abstract class ServerGamePacketListenerImplMixin {
             callback.cancel();
             player.sendSystemMessage(Component.literal(mod.message("messages.command-blocked",
                     "§cYou must authenticate before using this command!")));
+        }
+    }
+
+    /**
+     * These injections run at the head of the packet handlers, which the network thread enters
+     * first. Dropping the packet there is safe; changing the player or the world is not.
+     */
+    private void onServerThread(Runnable change) {
+        AuthSecuredFabricMod mod = AuthSecuredFabricMod.getInstance();
+        if (mod != null) {
+            mod.runOnServerThread(() -> {
+                // The player may have logged in while this waited for the server thread.
+                if (!mod.getRestrictionAdapter().isAuthenticated(player.getUUID())) change.run();
+            });
         }
     }
 

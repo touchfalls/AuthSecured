@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 
 public final class FabricCommandRegistration {
 
@@ -196,11 +195,11 @@ public final class FabricCommandRegistration {
                                                 IntegerArgumentType.getInteger(context, "limit"),
                                                 StringArgumentType.getString(context, "player"))))))));
 
-        root.then(playerBooleanCommand(mod, "unlock", 3, player ->
-                mod.getContainer().getAuthService().unlockAccount(player),
+        root.then(playerBooleanCommand(mod, "unlock", 3, (player, actor) ->
+                operations(mod).unlock(player, actor),
                 "messages.admin-account-unlocked", "&aAccount unlocked."));
-        root.then(playerBooleanCommand(mod, "unregister", 4, player ->
-                operations(mod).unregister(player),
+        root.then(playerBooleanCommand(mod, "unregister", 4, (player, actor) ->
+                operations(mod).unregister(player, actor),
                 "messages.admin-account-unregistered", "&aAccount unregistered."));
 
         root.then(Commands.literal("resetpassword")
@@ -215,7 +214,7 @@ public final class FabricCommandRegistration {
                         return 1;
                     }
                     String player = StringArgumentType.getString(context, "player");
-                    operations(mod).issueTemporaryPassword(player).whenComplete((reset, error) ->
+                    operations(mod).issueTemporaryPassword(player, actor(context.getSource())).whenComplete((reset, error) ->
                             context.getSource().getServer().execute(() -> deliverTemporaryPassword(
                                     mod, context.getSource(), player, reset, error)));
                     return 1;
@@ -226,12 +225,12 @@ public final class FabricCommandRegistration {
 
     private static LiteralArgumentBuilder<CommandSourceStack> playerBooleanCommand(
             AuthSecuredFabricMod mod, String name, int defaultLevel,
-            Function<String, CompletableFuture<Boolean>> operation,
+            java.util.function.BiFunction<String, java.util.UUID, CompletableFuture<Boolean>> operation,
             String successKey, String successFallback) {
         return Commands.literal(name)
                 .requires(source -> permitted(mod, source, name, defaultLevel))
                 .then(playerArgument("player").executes(context -> {
-                    operation.apply(StringArgumentType.getString(context, "player"))
+                    operation.apply(StringArgumentType.getString(context, "player"), actor(context.getSource()))
                             .whenComplete((success, error) -> context.getSource().getServer().execute(() ->
                                     send(context.getSource(), error == null && Boolean.TRUE.equals(success)
                                             ? message(mod, successKey, successFallback)
@@ -294,6 +293,11 @@ public final class FabricCommandRegistration {
         int level = mod.getContainer().getConfigManager().getInt(
                 "admin.fabric-permission-levels." + operation, defaultLevel, 0, 4);
         return FabricPermissionChecker.hasPermission(source, level);
+    }
+
+    /** Null for the console and RCON. */
+    private static java.util.UUID actor(CommandSourceStack source) {
+        return source.getPlayer() == null ? null : source.getPlayer().getUUID();
     }
 
     private static AdminOperations operations(AuthSecuredFabricMod mod) {

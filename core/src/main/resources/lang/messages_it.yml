@@ -105,7 +105,7 @@ messages:
   admin-doctor-redis-ok: "Archivio dei limiti dei tentativi"
   admin-doctor-redis-fail: "Redis non è disponibile; i limiti sono solo locali"
   admin-doctor-ip-secret-ok: "Segreto per l'hash degli indirizzi IP"
-  admin-doctor-ip-secret-fail: "AUTHSECURED_IP_SECRET non è impostato"
+  admin-doctor-ip-secret-fail: "Il segreto per l'hash degli IP è un file di questo server, ma è attivo un database condiviso o Redis. Imposta lo stesso AUTHSECURED_IP_SECRET su tutti i server, altrimenti sessioni, limiti per IP e codici a due fattori funzionano solo sul server che li ha creati."
   admin-doctor-session-ip-ok: "Associazione delle sessioni all'IP"
   admin-doctor-session-ip-fail: "Le sessioni non sono associate all'IP del giocatore su un server in modalità offline, quindi chiunque entri con lo stesso nome le eredita. Imposta session.verify-ip: true."
   admin-doctor-argon2-ok: "Costo dell'hash delle password"

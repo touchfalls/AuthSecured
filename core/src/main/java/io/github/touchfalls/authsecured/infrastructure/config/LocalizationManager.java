@@ -17,10 +17,10 @@ public class LocalizationManager {
 
     private final File dataFolder;
     private final PlatformLogger logger;
-    private Map<String, Object> defaultMessagesMap = Collections.emptyMap();
-    private Map<String, Object> bundledDefaultMessagesMap = Collections.emptyMap();
-    private Map<String, Object> activeMessagesMap = Collections.emptyMap();
-    private Map<String, Object> bundledActiveMessagesMap = Collections.emptyMap();
+    private volatile Map<String, Object> defaultMessagesMap = Collections.emptyMap();
+    private volatile Map<String, Object> bundledDefaultMessagesMap = Collections.emptyMap();
+    private volatile Map<String, Object> activeMessagesMap = Collections.emptyMap();
+    private volatile Map<String, Object> bundledActiveMessagesMap = Collections.emptyMap();
     private String currentLanguage = "en";
 
     public LocalizationManager(File dataFolder, String langCode, PlatformLogger logger) {

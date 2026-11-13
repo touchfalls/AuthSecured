@@ -105,7 +105,7 @@ messages:
   admin-doctor-redis-ok: "Rate-limit backend"
   admin-doctor-redis-fail: "Redis is unavailable; rate limits are local only"
   admin-doctor-ip-secret-ok: "IP hashing secret"
-  admin-doctor-ip-secret-fail: "AUTHSECURED_IP_SECRET is missing"
+  admin-doctor-ip-secret-fail: "The IP hashing secret is a per-server file, but a shared database or Redis is enabled. Set the same AUTHSECURED_IP_SECRET on every server, or sessions, IP limits and two-factor codes only work on the server that made them."
   admin-doctor-session-ip-ok: "Session IP binding"
   admin-doctor-session-ip-fail: "Sessions are not bound to the player's IP on an offline-mode server, so anyone joining with the same name inherits them. Set session.verify-ip: true."
   admin-doctor-argon2-ok: "Password hashing cost"

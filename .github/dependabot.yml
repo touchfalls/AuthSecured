@@ -4,12 +4,19 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
 
   - package-ecosystem: gradle
     directory: /
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
+    groups:
+      # One pull request for the safe bumps; a new major version still gets its own.
+      minor-and-patch:
+        update-types: [minor, patch]
     ignore:
       # Compiled against the lowest supported server API on purpose.
       - dependency-name: io.papermc.paper:paper-api

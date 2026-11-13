@@ -285,8 +285,10 @@ public final class ConfigManager {
      * The commands a player may run before login. {@code /2fa} is always included: a list saved by an older
      * version does not have it, and without it a player with an authenticator could never finish logging in.
      */
-    public List<String> getAllowedCommands(List<String> defaultValue) {
-        List<String> configured = getStringList("restrictions.allowed-commands", defaultValue);
+    /** Commands a player may run before logging in; {@code /2fa} is always among them. */
+    public List<String> getAllowedCommands() {
+        List<String> configured = getStringList("restrictions.allowed-commands",
+                List.of("/login", "/l", "/register", "/reg", "/changepassword", "/cp", "/2fa"));
         if (configured.stream().anyMatch("/2fa"::equalsIgnoreCase)) return configured;
         List<String> withTwoFactor = new java.util.ArrayList<>(configured);
         withTwoFactor.add("/2fa");

@@ -122,9 +122,11 @@ public class AuthService {
                 });
     }
 
+    /** @param actor the administrator's UUID, or null for the console */
     public CompletableFuture<TemporaryPasswordReset> issueTemporaryPassword(String username,
                                                                               int passwordLength,
-                                                                              long expirySeconds) {
+                                                                              long expirySeconds,
+                                                                              UUID actor) {
         if (expirySeconds < 60 || expirySeconds > 86_400) {
             return CompletableFuture.failedFuture(new IllegalArgumentException(
                     "Temporary password expiry must be between 60 and 86400 seconds"));
@@ -149,7 +151,7 @@ public class AuthService {
                                         .thenCompose(v -> resetTwoFactor(account.getId()))
                                         .thenCompose(v -> loginService.clearRateLimit(normalized))
                                         .thenCompose(v -> securityService.logSecurityEvent(account.getId(),
-                                                SecurityEventType.TEMPORARY_PASSWORD_ISSUED, null, "{}"))
+                                                SecurityEventType.TEMPORARY_PASSWORD_ISSUED, null, actorMetadata(actor, null)))
                                         .thenApply(v -> {
                                             TemporaryPasswordReset reset = new TemporaryPasswordReset(
                                                     account.getUuid(), temporaryPassword, expiresAt);
@@ -174,7 +176,7 @@ public class AuthService {
         return accountRepository.findByUuid(playerUuid).thenApply(Optional::isPresent);
     }
 
-    public CompletableFuture<Boolean> unlockAccount(String username) {
+    public CompletableFuture<Boolean> unlockAccount(String username, UUID actor) {
         String normalized = UsernameNormalizer.normalize(username);
         return accountRepository.findByUsernameNormalized(normalized)
                 .thenCompose(optAccount -> {
@@ -184,14 +186,14 @@ public class AuthService {
                             .thenCompose(updated -> updated
                                     ? loginService.clearRateLimit(normalized)
                                             .thenCompose(v -> securityService.logSecurityEvent(account.getId(),
-                                                    SecurityEventType.ACCOUNT_UNLOCKED, null, "{}"))
+                                                    SecurityEventType.ACCOUNT_UNLOCKED, null, actorMetadata(actor, null)))
                                             .thenApply(v -> true)
                                     : CompletableFuture.completedFuture(false));
                 });
     }
 
     /** Deletes the account and revokes its sessions; yields the owner's UUID if an account was deleted. */
-    public CompletableFuture<Optional<UUID>> unregisterAccount(String username) {
+    public CompletableFuture<Optional<UUID>> unregisterAccount(String username, UUID actor) {
         String normalized = UsernameNormalizer.normalize(username);
         return accountRepository.findByUsernameNormalized(normalized)
                 .thenCompose(optAccount -> {
@@ -200,12 +202,22 @@ public class AuthService {
                     return accountRepository.delete(account.getUuid())
                             .thenCompose(deleted -> {
                                 if (deleted) {
+                                    // The account row is gone, so the event carries its name instead of its id.
                                     return sessionService.revokeAllSessionsForAccount(account.getId())
+                                            .thenCompose(v -> securityService.logSecurityEvent(null,
+                                                    SecurityEventType.ADMIN_ACTION, null,
+                                                    actorMetadata(actor, account.getUsernameNormalized())))
                                             .thenApply(v -> Optional.of(account.getUuid()));
                                 }
                                 return CompletableFuture.completedFuture(Optional.<UUID>empty());
                             });
                 });
+    }
+
+    // Both values are safe inside JSON as they are: a UUID, and a name limited to [a-z0-9_].
+    private static String actorMetadata(UUID actor, String unregistered) {
+        return "{\"actor\":\"" + (actor == null ? "console" : actor) + "\""
+                + (unregistered == null ? "" : ",\"unregistered\":\"" + unregistered + "\"") + "}";
     }
 
     public SessionService getSessionService() {

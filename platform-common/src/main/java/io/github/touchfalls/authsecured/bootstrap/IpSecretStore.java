@@ -29,7 +29,7 @@ final class IpSecretStore {
     static Secret loadOrCreate(File dataFolder, String configuredSecret, PlatformLogger logger) {
         if (configuredSecret != null && !configuredSecret.isBlank()) {
             logger.warning("AUTHSECURED_IP_SECRET overrides ip-secret.key. Changing the secret invalidates "
-                    + "IP-bound sessions and rate-limit identities.");
+                    + "IP-bound sessions and rate-limit identities, and players lose their two-factor setup.");
             return new Secret(configuredSecret, true);
         }
 
@@ -50,7 +50,8 @@ final class IpSecretStore {
                     Files.writeString(path, generated + "\n", StandardCharsets.UTF_8,
                             java.nio.file.StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
                     logger.warning("Generated ip-secret.key in the AuthSecured data directory. Back it up. "
-                            + "Changing it invalidates IP-bound sessions and rate-limit identities.");
+                            + "Changing or losing it invalidates IP-bound sessions and rate-limit "
+                            + "identities, and players lose their two-factor setup.");
                 } catch (FileAlreadyExistsException ignored) {
                     // Another startup created the file. Read its value below.
                 } finally {

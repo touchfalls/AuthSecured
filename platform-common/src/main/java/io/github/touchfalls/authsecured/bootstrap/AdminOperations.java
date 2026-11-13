@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /** Shared implementation behind the Paper and Fabric administrative command adapters. */
@@ -94,7 +95,8 @@ public final class AdminOperations {
                     message("messages.admin-doctor-ip-secret-ok", "IP hashing secret"),
                     message("messages.admin-doctor-ip-secret-fail",
                             "IP hashing secret comes from a per-server file, but a shared database or "
-                                    + "Redis is enabled. Set the same AUTHSECURED_IP_SECRET on every server."));
+                                    + "Redis is enabled. Set the same AUTHSECURED_IP_SECRET on every server, or "
+                                    + "sessions, IP limits and two-factor codes only work on the server that made them."));
             // Without IP binding a session is keyed only by UUID, which an offline-mode server
             // derives from the player name: anyone joining under that name inherits it.
             addCheck(lines, !container.getSessionService().isEnabled()
@@ -161,12 +163,17 @@ public final class AdminOperations {
                 .thenApply(entries -> formatAudit(entries, normalized));
     }
 
-    public CompletableFuture<TemporaryPasswordReset> issueTemporaryPassword(String username) {
+    /** @param actor the administrator's UUID, or null for the console; recorded in the audit log */
+    public CompletableFuture<Boolean> unlock(String username, UUID actor) {
+        return container.getAuthService().unlockAccount(username, actor);
+    }
+
+    public CompletableFuture<TemporaryPasswordReset> issueTemporaryPassword(String username, UUID actor) {
         int length = container.getConfigManager().getInt(
                 "admin.temporary-password.length", 18, 12, 64);
         long expiry = container.getConfigManager().getInt(
                 "admin.temporary-password.expires-seconds", 900, 60, 86_400);
-        return container.getAuthService().issueTemporaryPassword(username, length, expiry)
+        return container.getAuthService().issueTemporaryPassword(username, length, expiry, actor)
                 .thenApply(reset -> {
                     // The old password no longer works, so neither may a connection that used it.
                     if (reset != null) {
@@ -178,8 +185,8 @@ public final class AdminOperations {
                 });
     }
 
-    public CompletableFuture<Boolean> unregister(String username) {
-        return container.getAuthService().unregisterAccount(username)
+    public CompletableFuture<Boolean> unregister(String username, UUID actor) {
+        return container.getAuthService().unregisterAccount(username, actor)
                 .thenApply(deleted -> {
                     deleted.ifPresent(playerUuid -> container.getCommandExecutor().revokeAuthentication(playerUuid,
                             "messages.admin-unregistered-notice",

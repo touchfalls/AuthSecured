@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Security
+- Only one authenticator code per player is checked at a time, as for passwords, so codes sent in
+  parallel cannot all pass before the account locks.
+- A saved session no longer logs in a suspended or permanently locked account.
+- Fabric: a frozen player is dismounted, pulled back and grounded on the server thread; the
+  network thread only drops the packet.
+- `/authadmin unregister` is recorded in the audit log, and `unlock`, `unregister` and
+  `resetpassword` record who ran them.
+
+### Fixed
+- A saved session is found by the player's address among all of their sessions, so logging in
+  from a second address no longer stops the automatic login from the first.
+- `/authadmin doctor` described a shared database with a per-server secret as "secret is missing"
+  in every bundled language.
+- The log says so when a two-factor secret cannot be decrypted because the server secret changed.
+  The startup warnings and the deployment guide now say that the secret also protects two-factor
+  setups.
+
+### Changed
+- CI runs the repositories and the Flyway migrations against PostgreSQL.
+
 ## [1.3.0] - 2026-10-30
 
 ### Added

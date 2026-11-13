@@ -106,28 +106,39 @@ public class DatabaseSessionRepository implements SessionRepository {
 
     @Override
     public CompletableFuture<Optional<Session>> findActiveByPlayerUuid(UUID playerUuid) {
+        return findActive(playerUuid, null, false);
+    }
+
+    @Override
+    public CompletableFuture<Optional<Session>> findRestorableByPlayerUuid(UUID playerUuid, byte[] ipHash) {
+        return findActive(playerUuid, ipHash, true);
+    }
+
+    private CompletableFuture<Optional<Session>> findActive(UUID playerUuid, byte[] ipHash, boolean restorable) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = isPostgres ?
-                    "SELECT s.id, s.account_id, a.uuid AS player_uuid, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
-                            "FROM sessions s JOIN accounts a ON s.account_id = a.id " +
-                            "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > NOW() " +
-                            "ORDER BY s.created_at DESC LIMIT 1" :
-                    "SELECT s.id, s.account_id, a.uuid AS player_uuid, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
-                            "FROM sessions s JOIN accounts a ON s.account_id = a.id " +
-                            "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > ? " +
-                            "ORDER BY s.created_at DESC LIMIT 1";
+            String sql = "SELECT s.id, s.account_id, a.uuid AS player_uuid, s.token_hash, s.server_id, s.created_at, s.expires_at, s.revoked_at " +
+                    "FROM sessions s JOIN accounts a ON s.account_id = a.id " +
+                    "WHERE a.uuid = ? AND s.revoked_at IS NULL AND s.expires_at > " + (isPostgres ? "NOW() " : "? ") +
+                    (restorable ? "AND a.status <> 'SUSPENDED' AND NOT (a.status = 'LOCKED' AND a.locked_until IS NULL) " : "") +
+                    // Matched in SQL, not on the newest row only: a login from a second address
+                    // must not hide the still-valid session of the first one.
+                    (ipHash != null ? "AND s.token_hash = ? " : "") +
+                    "ORDER BY s.created_at DESC LIMIT 1";
             try (Connection conn = dataSource.getConnection();
                  PreparedStatement stmt = conn.prepareStatement(sql)) {
+                int index = 1;
                 if (isPostgres) {
-                    stmt.setObject(1, playerUuid);
+                    stmt.setObject(index++, playerUuid);
                 } else {
-                    stmt.setString(1, playerUuid.toString());
-                    stmt.setString(2, Instant.now().toString());
+                    stmt.setString(index++, playerUuid.toString());
+                    stmt.setString(index++, Instant.now().toString());
+                }
+                if (ipHash != null) {
+                    stmt.setBytes(index, ipHash);
                 }
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        Session session = mapResultSetToSession(rs);
-                        return Optional.of(session);
+                        return Optional.of(mapResultSetToSession(rs));
                     }
                 }
             } catch (SQLException e) {
