@@ -22,6 +22,23 @@ jobs:
   build:
     name: Tests, Paper and Fabric (default version)
     runs-on: ubuntu-latest
+    # PostgresIntegrationTest runs only when this variable is set; it uses the service below.
+    env:
+      AUTHSECURED_TEST_PG_HOST: localhost
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: authsecured
+          POSTGRES_PASSWORD: authsecured
+          POSTGRES_DB: authsecured
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U authsecured"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
