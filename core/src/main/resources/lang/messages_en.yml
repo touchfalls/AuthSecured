@@ -71,6 +71,7 @@ messages:
   admin-temporary-password-copy: "&b&n{password}"
   admin-temporary-password-hover: "&aClick to copy the temporary password."
   admin-temporary-password-expires: "&7Expires at: {expires}. The player must use /changepassword <temporary> <new>."
+  admin-temporary-password-warning: "&cThe password stays in your chat history. Clear it with F3 + D, especially when streaming or recording."
   admin-player-usage: "&cUsage: /authadmin {operation} <player>"
   admin-operation-failed: "&cOperation failed. Check the server log."
   admin-account-unlocked: "&aAccount unlocked."
