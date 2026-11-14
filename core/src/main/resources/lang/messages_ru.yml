@@ -71,6 +71,7 @@ messages:
   admin-temporary-password-copy: "&b&n{password}"
   admin-temporary-password-hover: "&aНажмите ЛКМ, чтобы скопировать временный пароль."
   admin-temporary-password-expires: "&7Действует до: {expires}. Игрок должен выполнить /changepassword <временный> <новый>."
+  admin-temporary-password-warning: "&cПароль остался в истории чата. Очистите её через F3 + D, особенно на стриме или при записи."
   admin-player-usage: "&cИспользование: /authadmin {operation} <игрок>"
   admin-operation-failed: "&cНе удалось выполнить операцию. Проверьте журнал сервера."
   admin-account-unlocked: "&aАккаунт разблокирован."
