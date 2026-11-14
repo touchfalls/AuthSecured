@@ -266,6 +266,9 @@ public class LoginService {
         }
         if (!valid) {
             securityNotifier.loginFailure(alertName, "INVALID_PASSWORD");
+            // shortcut: predicted from the snapshot read before the hash check; checks for one player run one
+            // at a time, so only two players typing the same name at once could miss or double the event.
+            boolean locks = account.nextFailureLocks(maxFailedAttempts, now);
             return accountRepository.incrementFailedAttemptsAtomic(
                             account.getId(), maxFailedAttempts, lockDurationSeconds, now)
                     .thenCompose(updated -> updated
@@ -273,6 +276,9 @@ public class LoginService {
                             : CompletableFuture.failedFuture(new IllegalStateException("Account disappeared")))
                     .thenCompose(v -> rateLimitService.recordFailedLoginAttempt(normalized, ipHash))
                     .thenCompose(v -> securityService.logLoginAttempt(account.getId(), ipHash, false, "INVALID_PASSWORD"))
+                    .thenCompose(v -> locks ? securityService.logSecurityEvent(
+                            account.getId(), SecurityEventType.ACCOUNT_LOCKED, ipHash, "{}")
+                            : CompletableFuture.<Void>completedFuture(null))
                     .thenApply(v -> rejected(AuthResult.INVALID_PASSWORD, normalized));
         }
         if (account.isTemporaryPasswordExpired(now)) {

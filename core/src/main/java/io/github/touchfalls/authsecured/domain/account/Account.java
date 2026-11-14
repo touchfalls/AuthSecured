@@ -62,6 +62,17 @@ public class Account {
         return false;
     }
 
+    /**
+     * Whether one more failure locks the account, by the same rule as
+     * {@code AccountRepository.incrementFailedAttemptsAtomic}: an expired lock restarts the count at 1.
+     */
+    public boolean nextFailureLocks(int maxAttempts, Instant currentTime) {
+        if (status == AccountStatus.SUSPENDED) return false;
+        boolean lockExpired = status == AccountStatus.LOCKED && lockedUntil != null
+                && !currentTime.isBefore(lockedUntil);
+        return (lockExpired ? 1 : failedLoginAttempts + 1) >= maxAttempts;
+    }
+
     public void recordFailedAttempt(int maxAttempts, long lockDurationSeconds, Instant currentTime) {
         this.failedLoginAttempts++;
         this.updatedAt = currentTime;

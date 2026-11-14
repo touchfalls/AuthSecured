@@ -186,10 +186,15 @@ public class TwoFactorService {
     }
 
     private CompletableFuture<Outcome> recordFailure(Account account, byte[] ipHash) {
+        Instant now = Instant.now();
+        boolean locks = account.nextFailureLocks(maxFailedAttempts, now); // same shortcut as in LoginService
         return accountRepository.incrementFailedAttemptsAtomic(
-                        account.getId(), maxFailedAttempts, lockDurationSeconds, Instant.now())
+                        account.getId(), maxFailedAttempts, lockDurationSeconds, now)
                 .thenCompose(v -> rateLimitService.recordFailedLoginAttempt(account.getUsernameNormalized(), ipHash))
                 .thenCompose(v -> securityService.logLoginAttempt(account.getId(), ipHash, false, "INVALID_TWO_FACTOR_CODE"))
+                .thenCompose(v -> locks ? securityService.logSecurityEvent(
+                        account.getId(), SecurityEventType.ACCOUNT_LOCKED, ipHash, "{}")
+                        : CompletableFuture.<Void>completedFuture(null))
                 .thenApply(v -> Outcome.of(Status.INVALID_CODE));
     }
 
