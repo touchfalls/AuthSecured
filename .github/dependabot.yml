@@ -24,6 +24,8 @@ updates:
       - dependency-name: com.mojang:minecraft
       - dependency-name: net.fabricmc:*
       - dependency-name: net.fabricmc.fabric-api:*
+      # The Loom plugin id is not covered by net.fabricmc:*. Loom 1.19+ needs Gradle on Java 25.
+      - dependency-name: net.fabricmc.fabric-loom
       # Pinned on Fabric at 3.49.1.0 on purpose: newer versions broke Ledger (see ROADMAP.md,
       # CHANGELOG 1.2.5). The version is forced in platform-fabric/build.gradle.kts, which a bump
       # would change without any test noticing. Update it by hand together with a Ledger check.
