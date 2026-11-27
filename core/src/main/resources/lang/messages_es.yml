@@ -71,6 +71,7 @@ messages:
   admin-temporary-password-copy: "&b&n{password}"
   admin-temporary-password-hover: "&aHaz clic para copiar la contraseña temporal."
   admin-temporary-password-expires: "&7Caduca el: {expires}. El jugador debe usar /changepassword <temporal> <nueva>."
+  admin-temporary-password-warning: "&cLa contraseña queda en el historial del chat. Bórralo con F3 + D, sobre todo si transmites o grabas."
   admin-player-usage: "&cUso: /authadmin {operation} <jugador>"
   admin-operation-failed: "&cLa operación falló. Revisa el registro del servidor."
   admin-account-unlocked: "&aCuenta desbloqueada."

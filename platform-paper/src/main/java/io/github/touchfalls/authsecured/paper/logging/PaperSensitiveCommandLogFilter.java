@@ -11,7 +11,8 @@ import org.apache.logging.log4j.message.Message;
 import java.util.Locale;
 
 /**
- * Drops Paper's built-in player-command log record before it is formatted.
+ * Drops Paper's built-in player-command log record before it is formatted, and any other log line
+ * that carries a password command with an argument (command spies, chat loggers).
  * Paper logs the raw command before firing PlayerCommandPreprocessEvent, so an
  * event listener alone cannot keep password arguments out of the console.
  */
@@ -46,9 +47,10 @@ public final class PaperSensitiveCommandLogFilter extends AbstractFilter impleme
     static boolean containsSensitivePaperCommand(LogEvent event) {
         if (event == null) return false;
         Message message = event.getMessage();
-        String format = message == null ? null : message.getFormat();
+        if (message == null) return false;
+        String format = message.getFormat();
         if (format == null || !format.toLowerCase(Locale.ROOT).contains(PAPER_COMMAND_MARKER)) {
-            return false;
+            return SensitiveCommandLogMatcher.containsCommandWithArgument(message.getFormattedMessage());
         }
 
         Object[] parameters = message.getParameters();

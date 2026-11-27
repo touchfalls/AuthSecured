@@ -282,6 +282,10 @@ public final class FabricCommandRegistration {
             send(source, message(mod, "messages.admin-temporary-password-expires",
                     "&7Expires at: {expires}. The player must use /changepassword <temporary> <new>.",
                     Map.of("expires", reset.getExpiresAt().toString())));
+            if (source.isPlayer()) {
+                send(source, message(mod, "messages.admin-temporary-password-warning",
+                        "&cThe password stays in your chat history. Clear it with F3 + D, especially when streaming or recording."));
+            }
         } finally {
             Arrays.fill(password, '\0');
             reset.destroy();

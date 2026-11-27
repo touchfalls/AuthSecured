@@ -22,6 +22,10 @@ All notable changes to this project will be documented in this file.
 - A warning is logged when the Redis connection is unencrypted and leaves the machine.
 - Fabric: a logged-in player is no longer kicked by a connection under the same name from
   another address on an offline-mode server; the new connection is refused, as on Paper.
+- Paper: any console line with a password command and an argument is dropped, not only Paper's
+  own command line, so command-spy and chat-logging plugins no longer leak passwords. A chat line
+  such as "type /login to continue" is dropped too, as it cannot be told apart from a password.
+- After `/authadmin resetpassword`, a player who ran it is reminded to clear the chat with F3 + D.
 
 ### Fixed
 - Paper: on an online-mode server the owner can again take over their own connection from
