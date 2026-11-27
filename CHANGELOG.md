@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.3.1] - 2026-11-27
+
+### Added
+- The audit log records `ACCOUNT_LOCKED` when a failed password or authenticator check locks
+  an account, and `SESSION_REVOKED` when a player revokes their saved sessions.
 
 ### Security
 - Only one authenticator code per player is checked at a time, as for passwords, so codes sent in
