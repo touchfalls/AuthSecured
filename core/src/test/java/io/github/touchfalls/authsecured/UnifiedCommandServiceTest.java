@@ -229,13 +229,13 @@ class UnifiedCommandServiceTest {
         when(authService.getSessionService()).thenReturn(sessionService);
         when(restrictionAdapter.isAuthenticated(playerUuid)).thenReturn(true);
         when(sessionService.countActiveSessions(playerUuid)).thenReturn(CompletableFuture.completedFuture(3));
-        when(sessionService.revokeActiveSessionForPlayer(playerUuid)).thenReturn(CompletableFuture.completedFuture(null));
+        when(authService.revokeSavedSessions(playerUuid)).thenReturn(CompletableFuture.completedFuture(null));
 
         commandExecutor.executeSessions(playerUuid, false).join();
         verify(platform).sendMessage(eq(playerUuid), contains("3"));
 
         commandExecutor.executeSessions(playerUuid, true).join();
-        verify(sessionService).revokeActiveSessionForPlayer(playerUuid);
+        verify(authService).revokeSavedSessions(playerUuid);
         verify(restrictionAdapter, never()).setPlayerUnauthenticated(any(), any());
     }
 

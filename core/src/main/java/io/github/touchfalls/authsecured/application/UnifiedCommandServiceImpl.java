@@ -337,7 +337,7 @@ public class UnifiedCommandServiceImpl implements UnifiedCommandExecutor {
         }
         SessionService sessions = authService.getSessionService();
         CompletableFuture<String> message = revoke
-                ? sessions.revokeActiveSessionForPlayer(playerUuid)
+                ? authService.revokeSavedSessions(playerUuid)
                         .thenApply(ignored -> localizationManager.getMessage("messages.sessions-revoked",
                                 "&aAll saved sessions were ended. You stay logged in on this connection."))
                 : sessions.countActiveSessions(playerUuid)

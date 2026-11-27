@@ -89,6 +89,42 @@ class LoginServiceSecurityTest {
     }
 
     @Test
+    void theFailureThatLocksTheAccountIsAudited() {
+        for (int previousFailures : new int[]{3, 4}) {
+            AccountRepository accounts = mock(AccountRepository.class);
+            PasswordService passwords = mock(PasswordService.class);
+            RateLimitService limits = mock(RateLimitService.class);
+            SecurityService security = mock(SecurityService.class);
+            UUID uuid = UUID.randomUUID();
+            Instant now = Instant.now();
+            Account account = new Account(7L, uuid, "Player", "player", "hash",
+                    io.github.touchfalls.authsecured.domain.account.AccountStatus.ACTIVE,
+                    previousFailures, null, now, now, null, now);
+
+            when(limits.isIpRateLimited(any())).thenReturn(CompletableFuture.completedFuture(false));
+            when(limits.isAccountRateLimited(anyString())).thenReturn(CompletableFuture.completedFuture(false));
+            when(limits.recordFailedLoginAttempt(anyString(), any())).thenReturn(CompletableFuture.completedFuture(null));
+            when(security.logLoginAttempt(any(), any(), anyBoolean(), anyString()))
+                    .thenReturn(CompletableFuture.completedFuture(null));
+            when(security.logSecurityEvent(any(), any(), any(), anyString()))
+                    .thenReturn(CompletableFuture.completedFuture(null));
+            when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+            when(accounts.incrementFailedAttemptsAtomic(any(), anyInt(), anyLong(), any()))
+                    .thenReturn(CompletableFuture.completedFuture(true));
+            when(passwords.verifyPasswordAsync(any(), eq("hash"))).thenReturn(CompletableFuture.completedFuture(false));
+
+            LoginService service = new LoginService(accounts, passwords, limits,
+                    mock(SessionService.class), security, 5, 900);
+
+            assertEquals(AuthResult.INVALID_PASSWORD,
+                    service.login(uuid, "Player", "guess".toCharArray(), new byte[]{1}).join());
+            verify(security, times(previousFailures == 4 ? 1 : 0)).logSecurityEvent(7L,
+                    io.github.touchfalls.authsecured.domain.security.SecurityEventType.ACCOUNT_LOCKED,
+                    new byte[]{1}, "{}");
+        }
+    }
+
+    @Test
     void failuresWithoutAnAccountNeverCountAgainstTheNamedAccount() {
         AccountRepository accounts = mock(AccountRepository.class);
         PasswordService passwords = mock(PasswordService.class);

@@ -183,4 +183,28 @@ class AuthServiceSecurityTest {
                 .thenReturn(CompletableFuture.completedFuture(null));
         return security;
     }
+
+    @Test
+    void revokingSavedSessionsIsAuditedAndAFailedAuditDoesNotFailTheCommand() {
+        SessionService sessions = mock(SessionService.class);
+        SecurityService security = mock(SecurityService.class);
+        AccountRepository accounts = mock(AccountRepository.class);
+        UUID uuid = UUID.randomUUID();
+        Instant now = Instant.now();
+        Account account = new Account(9L, uuid, "Player", "player", "hash",
+                io.github.touchfalls.authsecured.domain.account.AccountStatus.ACTIVE, 0, null, now, now, null, now);
+        when(sessions.revokeActiveSessionForPlayer(uuid)).thenReturn(CompletableFuture.completedFuture(null));
+        when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.completedFuture(Optional.of(account)));
+        when(security.logSecurityEvent(any(), any(), any(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        AuthService service = new AuthService(mock(RegistrationService.class), mock(LoginService.class),
+                mock(PasswordService.class), sessions, security, accounts);
+
+        service.revokeSavedSessions(uuid).join();
+        verify(sessions).revokeActiveSessionForPlayer(uuid);
+        verify(security).logSecurityEvent(9L, SecurityEventType.SESSION_REVOKED, null, "{}");
+
+        when(accounts.findByUuid(uuid)).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("db")));
+        service.revokeSavedSessions(uuid).join();
+    }
 }

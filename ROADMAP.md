@@ -78,8 +78,9 @@ server checklist is in [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md).
 - [x] Session restore skips suspended and permanently locked accounts and checks every session of the player.
 - [ ] Proxy forwarding is detected by a heuristic (shared local address), not by reading the proxy settings.
 - [ ] Config and database file permissions, and plaintext webhook and bot tokens in `config.yml`.
-- [ ] Audit events defined but never written (`LOGIN_FAILURE`, `ACCOUNT_LOCKED`, `ADMIN_ACTION`,
-      `SESSION_REVOKED`); audit write errors are swallowed.
+- [x] Audit events: `ACCOUNT_LOCKED` is written by the password or 2FA failure that locks the account,
+      `SESSION_REVOKED` by `/sessions revoke`; `LOGIN_FAILURE` was removed (failures are in `login_attempts`
+      with their reason). A failed audit write is logged as a warning and never fails the login itself.
 - [x] Tests: mixin parity across the 17 Fabric targets (`MixinAuditTest`); concurrent registration on a real
       PostgreSQL (`PostgresIntegrationTest`, runs in CI).
 - [ ] Tests: Paper and Fabric restriction parity.

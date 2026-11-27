@@ -220,6 +220,17 @@ public class AuthService {
                 + (unregistered == null ? "" : ",\"unregistered\":\"" + unregistered + "\"") + "}";
     }
 
+    /** {@code /sessions revoke}: ends every saved session of the player's account and audits it. */
+    public CompletableFuture<Void> revokeSavedSessions(UUID playerUuid) {
+        return sessionService.revokeActiveSessionForPlayer(playerUuid)
+                .thenCompose(v -> accountRepository.findByUuid(playerUuid)
+                        .thenCompose(account -> account.isEmpty() ? CompletableFuture.<Void>completedFuture(null)
+                                : securityService.logSecurityEvent(account.get().getId(),
+                                        SecurityEventType.SESSION_REVOKED, null, "{}"))
+                        // The sessions are already gone; a failed audit write must not report the command as failed.
+                        .exceptionally(error -> null));
+    }
+
     public SessionService getSessionService() {
         return sessionService;
     }
