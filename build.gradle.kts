@@ -27,7 +27,7 @@ subprojects {
     apply(plugin = "java")
 
     dependencies {
-        add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher:1.10.2")
+        add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher:6.1.3")
     }
 
     java {
